@@ -1,0 +1,13 @@
+{
+    "aaa": {
+        "pos": 0,
+        "boll_up": 0,
+        "boll_down": 0,
+        "cci_value": 0,
+        "atr_value": 0,
+        "intra_trade_high": 0,
+        "intra_trade_low": 0,
+        "long_stop": 0,
+        "short_stop": 0
+    }
+}

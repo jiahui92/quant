@@ -1,0 +1,11 @@
+{
+    "class_name": "JiahuiTestBoll",
+    "vt_symbol": "300308.SZSE",
+    "interval": "d",
+    "start": "2022-01-01",
+    "rate": 2.5e-05,
+    "slippage": 0.0,
+    "size": 10000.0,
+    "pricetick": 0.01,
+    "capital": 1000000.0
+}

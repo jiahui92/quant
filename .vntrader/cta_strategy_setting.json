@@ -1,0 +1,28 @@
+{
+    "aaa": {
+        "class_name": "BollChannelStrategy",
+        "vt_symbol": "300308.SZSE",
+        "setting": {
+            "class_name": "BollChannelStrategy",
+            "boll_window": 18,
+            "boll_dev": 3.4,
+            "cci_window": 10,
+            "atr_window": 30,
+            "sl_multiplier": 5.2,
+            "fixed_size": 1
+        }
+    },
+    "bbb": {
+        "class_name": "JiahuiTestBoll",
+        "vt_symbol": "300308.SZSE",
+        "setting": {
+            "class_name": "JiahuiTestBoll",
+            "boll_window": 18,
+            "boll_dev": 3.4,
+            "cci_window": 10,
+            "atr_window": 30,
+            "sl_multiplier": 5.2,
+            "fixed_size": 1
+        }
+    }
+}
