@@ -57,8 +57,8 @@ def find_wave(row):
     history_data: List[BarData] = load_bar_data(
         symbol=row['symbol'],
         exchange=Exchange[row['exchange']],
-        start=datetime(2023, 6, 1),
-        end=datetime(2023, 10, 31),
+        start=datetime(2023, 2, 1),
+        end=datetime(2023, 6, 30),
         # start=datetime(2022, 11, 1),
         # end=datetime(2023, 3, 30),
         interval=Interval.DAILY,
@@ -103,55 +103,36 @@ def find_wave(row):
 
     # if (symbol == '300093'): print(preWithdrawal, preMin, lastMin)
 
-    if isWave and isGoodWithdrawal and withdrawaled > 30:
+    if isWave and isGoodWithdrawal and withdrawaled > 40:
         title = f"预期回撤:{int(withdrawal)} 最大已回撤:{int(withdrawaled)} 利润:{int(profit)}  {row['symbol']} {row['name']} {row['industry']}"
+        floatMarketValue = (row['float_share']*df.iloc[-1]['close_price'])
+        axtitle = f"流通市值:{int(floatMarketValue)}亿 PE:{row['pe']} 利润同比:{int(row['profit_yoy'])}% 股东人数:{int(row['holder_num']/10000)}万"
         savePath = "./studies/png2/"+row['industry']+row['symbol']+".png"
         print(title)
-
-        # timeStr =df['datetime'][preMinIndex].strftime('%Y-%m-%d %H:%M:%S')
-        # series = pandas.Series([timeStr, df['low_price'][preMinIndex]])
-        # data = {
-        #     datetime
-        # }
-        newDf = df.loc[preMinIndex:preMinIndex]
-        res = df['low_price'][preMinIndex:preMinIndex+1]
-        ok_res = df['low_price']
-        # print(res, type(res))
-        # print(ok_res, type(ok_res))
-
-        # df['preMin'] = numpy.NaN
-        # df['preMin'][preMinIndex] = df['low_price'][preMinIndex]
-
 
         dotArr = [
             {
                 'annotate': 'preMin',
                 'color': 'green',
                 'dotSeries': utils.makeSingleDotSeries(df['low_price'], preMinIndex),
-                # 'dotSeries': df['preMin'],
-                # 'dot': res,
-                # 'dot': pandas.Series(newDf.iloc[0]),
-                # 'dot': pandas.Series(newDf.iloc[0]),
-                # 'dot': df['low_price'],
-                # 'dot': df.loc[preMinIndex:preMinIndex]['low_price'],
             },
-            # {
-            #     'annotate': 'midMax',
-            #     'color': 'red',
-            #     'dot': [df['datetime'][midMaxIndex], df['high_price'][midMaxIndex]],
-            # },
-            # {
-            #     'annotate': 'lastMin',
-            #     'color': 'blue',
-            #     'dot': [df['datetime'][lastMinIndex], df['low_price'][lastMinIndex]],
-            # },
-            # {
-            #     'annotate': 'nowPrice',
-            #     'color': 'grey',
-            #     'dot': [df['datetime'][nowPriceIndex], df['close_price'][nowPriceIndex]],
-            # },
+            {
+                'annotate': 'midMax',
+                'color': 'red',
+                'dotSeries': utils.makeSingleDotSeries(df['high_price'], midMaxIndex),
+            },
+            {
+                'annotate': 'lastMin',
+                'color': 'blue',
+                'dotSeries': utils.makeSingleDotSeries(df['low_price'], lastMinIndex),
+            },
+            {
+                'annotate': 'nowPrice',
+                'color': 'grey',
+                'dotSeries': utils.makeSingleDotSeries(df['close_price'], nowPriceIndex),
+            },
         ]
-        plt = utils.getStockPlot(df, title, savePath, dotArr)
+        plt = utils.getStockPlot(df, dotArr, title, axtitle, savePath)
         plt.close()
 
         # plt.show()
