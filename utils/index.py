@@ -18,11 +18,19 @@ mpf_style = mpf.make_mpf_style(
 )
 
 def getStockDataFrame():
-    return pd.read_csv('./assets/tushare_stock_basic_20231014193537.csv', dtype={'symbol': str})
-    # for index, row in df.iterrows():
-    #     callback(row)
+    df1 = pd.read_csv('./assets/tushare_stock_basic.csv', dtype={'symbol': str})
+    df2 = pd.read_csv('./assets/tushare_bak_basic.csv', dtype={'symbol': str})
+    df1 = df1.drop_duplicates(subset="ts_code")
+    df2 = df2.drop_duplicates(subset="ts_code")
+    # df['symbol'] = df['ts_code'].apply(lambda str: str.split('.')[0])
+    df = pd.merge(df1, df2, on='ts_code', how='inner', suffixes=('','_delete'))
+    # 删掉merge时重复的列
+    for column in df.columns.tolist():
+        if column.find("_delete") != -1:
+            df.drop(column, axis=1, inplace=True)
+    return df
 
-def getStockPlot(df, title, savePath, dotArr):
+def getStockPlot(df, dotArr, title, axtitle, savePath):
 
     df['date']=df['datetime']
     df['open']=df['open_price']
@@ -36,12 +44,14 @@ def getStockPlot(df, title, savePath, dotArr):
         ap = mpf.make_addplot(dot['dotSeries'],  color=dot['color'], scatter=True, markersize=20, marker='o', panel=0)
         plots.append(ap)
 
+
     mpf.plot(
         df, type='candle',
         style=mpf_style, ylabel='Price', ylabel_lower='Volume',
         mav=(5, 10 , 30),
         volume=True,
         title=title,
+        axtitle=axtitle,
         savefig=savePath,
         addplot=plots,
     )
