@@ -3,13 +3,22 @@ https://zhuanlan.zhihu.com/p/647611800
 * backtesting.py 断点调试策略文件
 * study.py
 
+明显信号：
+* 成交量大涨，并且上涨
+* 二次探底确认
 
-* 找一个新的三方库
+
+* 数据清洗：获取前复权的价格，或者手动计算一下
 * 买入点
   * 换手率
-  * 动量策略
+  * 动量策略？
+* 动量策略 + 龙虎榜
+* 小市值策略
+* 券商预测价格
+* 股票回购
 
-
+mpf文档
+https://github.com/matplotlib/mplfinance/blob/master/examples/addplot.ipynb
 
 
 
