@@ -1,7 +1,7 @@
 import numpy
 import pandas
 from vnpy_ctastrategy.backtesting import load_bar_data
-from datetime import datetime
+from datetime import datetime, timedelta
 from vnpy.trader.constant import (
     Direction,
     Offset,
@@ -52,22 +52,18 @@ def getDataFrame(history_data):
 ### 排除最高点离现在比较近的图形？
 
 
-
-def find_wave(row):
+def find_wave(row: dict, nowDate: datetime, waveWidth = 60, waveShift = 0):
+    start = nowDate - timedelta((waveWidth+waveShift)*2)
     history_data: List[BarData] = load_bar_data(
         symbol=row['symbol'],
         exchange=Exchange[row['exchange']],
-        start=datetime(2023, 2, 1),
-        end=datetime(2023, 6, 30),
-        # start=datetime(2022, 11, 1),
-        # end=datetime(2023, 3, 30),
+        start=start,
+        end=nowDate,
         interval=Interval.DAILY,
     )
 
-    waveWidth = 60
-    waveShift = 30
     if len(history_data) < (waveWidth+waveShift):
-        return
+        return None, False, 0, 0, 0, []
 
     waveStart = -(waveWidth + waveShift)
     df = getDataFrame(history_data)
@@ -99,6 +95,36 @@ def find_wave(row):
     # isGoodWithdrawal = -10 < preWithdrawal < 10 and -5 < lastWithdrawal < 5
     minWithdrawal = min([nowPrice, preMin, lastMin])
     withdrawal = (nowPrice - minWithdrawal) / minWithdrawal * 100
+
+    dotArr = [
+        {
+            'annotate': 'preMin',
+            'color': 'green',
+            'dotSeries': utils.makeSingleDotSeries(df['low_price'], preMinIndex),
+        },
+        {
+            'annotate': 'midMax',
+            'color': 'red',
+            'dotSeries': utils.makeSingleDotSeries(df['high_price'], midMaxIndex),
+        },
+        {
+            'annotate': 'lastMin',
+            'color': 'blue',
+            'dotSeries': utils.makeSingleDotSeries(df['low_price'], lastMinIndex),
+        },
+        {
+            'annotate': 'nowPrice',
+            'color': 'grey',
+            'dotSeries': utils.makeSingleDotSeries(df['close_price'], nowPriceIndex),
+        },
+    ]
+
+    return [df, isWave, withdrawal, withdrawaled, profit, dotArr]
+
+
+def plot_wave(row):
+    nowDate = datetime(2023, 10, 31)
+    df, isWave, withdrawal, withdrawaled, profit, dotArr = find_wave(row, nowDate, 60, 0)
     isGoodWithdrawal = -10 < withdrawal < 10
 
     # if (symbol == '300093'): print(preWithdrawal, preMin, lastMin)
@@ -110,28 +136,6 @@ def find_wave(row):
         savePath = "./studies/png2/"+row['industry']+row['symbol']+".png"
         print(title)
 
-        dotArr = [
-            {
-                'annotate': 'preMin',
-                'color': 'green',
-                'dotSeries': utils.makeSingleDotSeries(df['low_price'], preMinIndex),
-            },
-            {
-                'annotate': 'midMax',
-                'color': 'red',
-                'dotSeries': utils.makeSingleDotSeries(df['high_price'], midMaxIndex),
-            },
-            {
-                'annotate': 'lastMin',
-                'color': 'blue',
-                'dotSeries': utils.makeSingleDotSeries(df['low_price'], lastMinIndex),
-            },
-            {
-                'annotate': 'nowPrice',
-                'color': 'grey',
-                'dotSeries': utils.makeSingleDotSeries(df['close_price'], nowPriceIndex),
-            },
-        ]
         plt = utils.getStockPlot(df, dotArr, title, axtitle, savePath)
         plt.close()
 

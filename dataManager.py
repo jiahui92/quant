@@ -11,33 +11,68 @@ from utils.index import getStockDataFrame
 mainEngine = MainEngine()
 dataManagerEngine = ManagerEngine(mainEngine, None)
 
-# 沪市 [600000,605600]
-# 科创 [688001,688982]
+def download():
+    df = getStockDataFrame()
+    count = 0
+    total = len(df)
+    for index, row in df.iterrows():
+        # if row['symbol'] != '605111': continue
+        bardataCount = dataManagerEngine.download_bar_data(
+            symbol=row['symbol'],
+            exchange=Exchange[row['exchange']],
+            # exchange=Exchange.SSE,
+            start=datetime(2015, 1, 1),
+            interval=Interval.DAILY,
+            output=printError,
+        )
+        count += 1
+        progress = int(round(count / total * 100, 0))
+        print(f"{row['symbol']} {bardataCount}, 进度:{progress}%")
 
-# 深市 [000001,003817]
-# 创业板 [300001,301559]
+def update():
+    overviews = dataManagerEngine.get_bar_overview()
+    total: int = len(overviews)
+    count: int = 0
+    for overview in overviews:
+        count += 1
+        # progress = int(round(count / total * 100, 0))
+        print(f"{overview.symbol}, 进度:{count}/{total}")
 
-# 北交所 [x,x]
+        try:
+            dataManagerEngine.download_bar_data(
+                overview.symbol,
+                overview.exchange,
+                overview.interval,
+                overview.end,
+                printError
+            )
+        except:
+            print('更新出错，删除数据后重新下载')
+            dataManagerEngine.delete_bar_data(
+                overview.symbol,
+                overview.exchange,
+                overview.interval,
+            )
+            dataManagerEngine.download_bar_data(
+                symbol=overview.symbol,
+                exchange=overview.exchange,
+                interval=overview.interval,
+                start=datetime(2015, 1, 1),
+                output=printError
+            )
+
+
+def delete():
+    dataManagerEngine.delete_bar_data(
+        symbol='000018',
+        exchange=Exchange.SSE,
+        interval=Interval.DAILY,
+    )
+    print('deleted')
 
 def printError(msg):
     print(msg)
 
-
-for index, row in getStockDataFrame().iterrows():
-    if row['symbol'] < '301559': continue
-    count = dataManagerEngine.download_bar_data(
-        symbol=row['symbol'],
-        exchange=Exchange[row['exchange']],
-        # exchange=Exchange.SSE,
-        start=datetime(2015, 1, 1),
-        interval=Interval.DAILY,
-        output=printError,
-    )
-    print(row['symbol'], count)
-    # time.sleep(0.01)
-
-
-
-# get all stock info
-## 沪深、科创、北证
-# for get
+# download()
+update()
+# delete()
