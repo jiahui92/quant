@@ -1,20 +1,49 @@
 https://zhuanlan.zhihu.com/p/647611800
+# 项目初始化
+* pip install -r requirements.txt
+  * pip freeze > requirements.txt(生成依赖)
+* tushare里的api.pro_bar.adj='qfq'（默认值修改为前复权）
+  * ./site-packages/tushare/pro/data_pro.py
+
 * run.py 启动回测程序
 * backtesting.py 断点调试策略文件
 * study.py
 
+MA + BOOL + 量 + 自选股
+
+
+数据
+* 每天请求股票列表
+* 删除不在列表里的数据
+* 定时更新
+
 明显信号：
-* 成交量大涨，并且上涨
-* 二次探底确认
+* 直接介入
+* 信号介入
+  * 连续3天小涨（这种好介入，风险低）
+  * 成交量大涨，并且上涨（介入风险大）
+  * 二次探底确认
+* 卖出
+  * 放量顶冲不过去
+  * 破位卖出
+  * 10d卖出
+* 股票较多的时候，可以调大回撤
+* 测试下10%等小区间的
 
-
-* 数据清洗：获取前复权的价格，或者手动计算一下
 * 买入点
   * 换手率
   * 动量策略？
-* 动量策略 + 龙虎榜
+
+策略！！！
+* 50%波浪
+  * 近几天平稳
 * 小市值策略
-* 券商预测价格
+  * 昨天收盘价
+  * 今天开盘价
+* 动量策略 + 龙虎榜
+* 港股通
+* PEG
+* 研报：券商、价格/涨幅、持有评级、无研报
 * 股票回购
 
 mpf文档
@@ -22,7 +51,7 @@ https://github.com/matplotlib/mplfinance/blob/master/examples/addplot.ipynb
 
 
 
-TODO
+# TODO
 * 识别的点位太少（波峰识别不准确）
   * 预处理数据，标记所有波峰，并且标记low,high price
     * 波峰里面还会包含小波峰

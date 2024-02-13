@@ -53,7 +53,7 @@ def getDataFrame(history_data):
 
 
 def find_wave(row: dict, nowDate: datetime, waveWidth = 60, waveShift = 0):
-    start = nowDate - timedelta((waveWidth+waveShift)*2)
+    start = nowDate - timedelta(((waveWidth+waveShift)+40)*1.5)
     history_data: List[BarData] = load_bar_data(
         symbol=row['symbol'],
         exchange=Exchange[row['exchange']],
@@ -63,15 +63,19 @@ def find_wave(row: dict, nowDate: datetime, waveWidth = 60, waveShift = 0):
     )
 
     if len(history_data) < (waveWidth+waveShift):
-        return None, False, 0, 0, 0, []
+        return None, False, False, 0, 0, 0, 0, []
 
     waveStart = -(waveWidth + waveShift)
     df = getDataFrame(history_data)
-    preMinIndex = df['low_price'][waveStart:waveStart+30].idxmin()
+
+    # 波浪的前段区域为： 0 ~ 1/2
+    preMinIndex = df['low_price'][waveStart:waveStart+int(waveWidth/2)].idxmin()
     preMin = df['low_price'][preMinIndex]
-    midMaxIndex = df['high_price'][waveStart+20:waveStart+40].idxmax()
+    # 波浪的中间区域为： 1/3 ~ 2/3
+    midMaxIndex = df['high_price'][waveStart+int(waveWidth/3):waveStart+int(waveWidth*2/3)].idxmax()
     midMax = df['high_price'][midMaxIndex]
-    lastMinIndex = df['low_price'][waveStart+50:waveStart+59].idxmin()
+    # 波浪的后段区域为： 1/2 ~ 1
+    lastMinIndex = df['low_price'][waveStart+int(waveWidth*5/6):waveStart+waveWidth-1].idxmin()
     lastMin = df['low_price'][lastMinIndex]
     nowPriceIndex = len(history_data)-1-waveShift
     nowPrice = df['close_price'].iloc[nowPriceIndex]
@@ -94,7 +98,7 @@ def find_wave(row: dict, nowDate: datetime, waveWidth = 60, waveShift = 0):
     # lastWithdrawal = (nowPrice-lastMin)/lastMin*100
     # isGoodWithdrawal = -10 < preWithdrawal < 10 and -5 < lastWithdrawal < 5
     minWithdrawal = min([nowPrice, preMin, lastMin])
-    withdrawal = (nowPrice - minWithdrawal) / minWithdrawal * 100
+    willWithdrawal = (nowPrice - minWithdrawal) / minWithdrawal * 100
 
     dotArr = [
         {
@@ -119,22 +123,36 @@ def find_wave(row: dict, nowDate: datetime, waveWidth = 60, waveShift = 0):
         },
     ]
 
-    return [df, isWave, withdrawal, withdrawaled, profit, dotArr]
+    isStable = False
+    # 股价是否已经平稳了，目前股价在近5天的均价 正负-1%~5%内
+    if len(df['close_price']) > 5:
+        isStable = df['close_price'].iloc[-1] / df['close_price'][-5:].mean() > 1.02
+
+    # 波浪的周期
+    waveLen = lastMinIndex - preMinIndex
+    return [df, isWave, isStable, waveLen, willWithdrawal, withdrawaled, profit, dotArr]
 
 
 def plot_wave(row):
-    nowDate = datetime(2023, 10, 31)
-    df, isWave, withdrawal, withdrawaled, profit, dotArr = find_wave(row, nowDate, 60, 0)
-    isGoodWithdrawal = -10 < withdrawal < 10
+    # nowDate = datetime(2023, 12, 8)
+    nowDate = datetime.now()
+    df, isWave, isStable, waveLen, willWithdrawal, withdrawaled, profit, dotArr = find_wave(row, nowDate, 300, 0)
+    isGoodWithdrawal = -10 < willWithdrawal < 10
 
     # if (symbol == '300093'): print(preWithdrawal, preMin, lastMin)
-
-    if isWave and isGoodWithdrawal and withdrawaled > 40:
-        title = f"预期回撤:{int(withdrawal)} 最大已回撤:{int(withdrawaled)} 利润:{int(profit)}  {row['symbol']} {row['name']} {row['industry']}"
+    isNotST = row['name'].find("ST") == -1
+    if isNotST and isStable and isWave and isGoodWithdrawal and withdrawaled > 45 and 60 < waveLen:
+        title = f"预期回撤:{int(willWithdrawal)} 最大已回撤:{int(withdrawaled)} 利润:{int(profit)}  {row['symbol']} {row['name']} {row['industry']}"
         floatMarketValue = (row['float_share']*df.iloc[-1]['close_price'])
         axtitle = f"流通市值:{int(floatMarketValue)}亿 PE:{row['pe']} 利润同比:{int(row['profit_yoy'])}% 股东人数:{int(row['holder_num']/10000)}万"
-        savePath = "./studies/png2/"+row['industry']+row['symbol']+".png"
+
         print(title)
+
+        isGoodPeg = 0 < row['pe'] / row['profit_yoy'] <= 1
+        pegPath = ''
+        if isGoodPeg:
+            pegPath = 'PEG-'
+        savePath = "./studies/png2/" + pegPath + row['industry'] + row['symbol'] + ".png"
 
         plt = utils.getStockPlot(df, dotArr, title, axtitle, savePath)
         plt.close()
