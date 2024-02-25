@@ -17,17 +17,20 @@ def download():
     total = len(df)
     for index, row in df.iterrows():
         # if row['symbol'] != '605111': continue
-        bardataCount = dataManagerEngine.download_bar_data(
-            symbol=row['symbol'],
-            exchange=Exchange[row['exchange']],
-            # exchange=Exchange.SSE,
-            start=datetime(2015, 1, 1),
-            interval=Interval.DAILY,
-            output=printError,
-        )
-        count += 1
-        progress = int(round(count / total * 100, 0))
-        print(f"{row['symbol']} {bardataCount}, 进度:{progress}%")
+        try:
+            bardataCount = dataManagerEngine.download_bar_data(
+                symbol=row['symbol'],
+                exchange=Exchange[row['exchange']],
+                # exchange=Exchange.SSE,
+                start=datetime(2015, 1, 1),
+                interval=Interval.DAILY,
+                output=printError,
+            )
+            count += 1
+            progress = int(round(count / total * 100, 0))
+            print(f"{row['symbol']} {bardataCount}, 进度:{progress}%")
+        except:
+            print('下载出错: ' + row['symbol'] + " " + row['exchange'])
 
 def update():
     overviews = dataManagerEngine.get_bar_overview()
