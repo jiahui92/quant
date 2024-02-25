@@ -171,3 +171,10 @@ chatGPT预测行业热度，分数/系数
   * 主力会隐藏资金，但散户不行
   * 主力布局阶段
 * 龙虎榜
+
+## vnpy支持北交所修改的文件
+* D:\veighna_studio\Lib\site-packages\vnpy_tushare\tushare_datafeed.py
+  * EXCHANGE_VT2TS
+  * to_ts_asset
+* D:\veighna_studio\Lib\site-packages\vnpy\trader\constant.py
+  * Exchange

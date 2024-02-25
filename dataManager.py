@@ -21,7 +21,11 @@ def download():
     count = 0
     total = len(df)
     for index, row in df.iterrows():
+        count += 1
         # if row['symbol'] != '605111': continue
+        # if row['exchange'] != 'BSE': continue
+        # delete_one(row)
+
         try:
             bardataCount = dataManagerEngine.download_bar_data(
                 symbol=row['symbol'],
@@ -31,7 +35,6 @@ def download():
                 interval=Interval.DAILY,
                 output=printError,
             )
-            count += 1
             progress = int(round(count / total * 100, 0))
             print(f"{row['symbol']} {bardataCount}, 进度:{progress}%")
         except:
@@ -68,7 +71,7 @@ def update_one(overview, tradeDate: str):
     if overview.end.strftime("%Y%m%d") == tradeDate: return
     # 上年的退市股不再更新
     if overview.end.strftime("%Y%m%d") < "20231231":
-        delete(overview)
+        delete_one(overview)
         print(overview.symbol + ': 删除退市股')
         return
 
@@ -97,10 +100,10 @@ def update_one(overview, tradeDate: str):
             output=printError
         )
 
-def delete(overview):
+def delete_one(overview):
     dataManagerEngine.delete_bar_data(
         symbol=overview.symbol,
-        exchange=overview.exchange,
+        exchange=Exchange[overview.exchange],
         interval=Interval.DAILY,
     )
     print('deleted')
@@ -108,7 +111,8 @@ def delete(overview):
 def printError(msg):
     print(msg)
 
-def getLatestTradeDate():
+# 获取最近一次的交易日
+def getLatestTradeDate() -> str:
     pro = ts.pro_api()
     df: pandas.DataFrame = pro.trade_cal(exchange='SSE', cal_date=datetime.now().strftime("%Y%m%d"), limit=1)
     return df["pretrade_date"].iloc[0]
