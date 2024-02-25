@@ -1,6 +1,11 @@
+import math
 import string
 import time
 from datetime import datetime
+import concurrent.futures
+
+import pandas
+import tushare as ts
 
 # from vnpy.trader.database import database_manager
 from vnpy.trader.constant import Exchange, Interval
@@ -33,42 +38,69 @@ def download():
             print('下载出错: ' + row['symbol'] + " " + row['exchange'])
 
 def update():
+    tradeDate = getLatestTradeDate()
     overviews = dataManagerEngine.get_bar_overview()
     total: int = len(overviews)
     count: int = 0
-    for overview in overviews:
-        count += 1
-        # progress = int(round(count / total * 100, 0))
-        print(f"{overview.symbol}, 进度:{count}/{total}")
 
-        try:
-            dataManagerEngine.download_bar_data(
-                overview.symbol,
-                overview.exchange,
-                overview.interval,
-                overview.end,
-                printError
-            )
-        except:
-            print('更新出错，删除数据后重新下载')
-            dataManagerEngine.delete_bar_data(
-                overview.symbol,
-                overview.exchange,
-                overview.interval,
-            )
-            dataManagerEngine.download_bar_data(
-                symbol=overview.symbol,
-                exchange=overview.exchange,
-                interval=overview.interval,
-                start=datetime(2015, 1, 1),
-                output=printError
-            )
+    # for overview in overviews:
+    #     count += 1
+    #     # progress = int(round(count / total * 100, 0))
+    #     print(f"{overview.symbol}, 进度:{count}/{total}")
+    #     update_one(overview, tradeDate)
+
+    max_parallel = 5
+    for index in range(math.ceil(total / max_parallel)):
+        #最大限制1分钟500个
+        # time.sleep(1)
+        count += max_parallel
+        print(f"{overviews[index*max_parallel].symbol}, 进度:{count}/{total}")
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            # 提交函数执行任务，并获得 Future 对象列表
+            futures = [executor.submit(update_one, get_item_by_index(overviews, index*max_parallel+i), tradeDate) for i in range(max_parallel)]
+            # 获取每个任务的结果
+            results = [future.result() for future in concurrent.futures.as_completed(futures)]
 
 
-def delete():
+def update_one(overview, tradeDate: str):
+    if overview == None: return
+    # 已经更新到最新交易日了
+    if overview.end.strftime("%Y%m%d") == tradeDate: return
+    # 上年的退市股不再更新
+    if overview.end.strftime("%Y%m%d") < "20231231":
+        delete(overview)
+        print(overview.symbol + ': 删除退市股')
+        return
+
+    try:
+        dataManagerEngine.download_bar_data(
+            overview.symbol,
+            overview.exchange,
+            overview.interval,
+            overview.end,
+            printError
+        )
+        print(overview.symbol + ': 更新成功')
+    except:
+        # time.sleep(1)
+        print(overview.symbol + ': 更新出错，删除数据后重新下载 ')
+        dataManagerEngine.delete_bar_data(
+            overview.symbol,
+            overview.exchange,
+            overview.interval,
+        )
+        dataManagerEngine.download_bar_data(
+            symbol=overview.symbol,
+            exchange=overview.exchange,
+            interval=overview.interval,
+            start=datetime(2015, 1, 1),
+            output=printError
+        )
+
+def delete(overview):
     dataManagerEngine.delete_bar_data(
-        symbol='000018',
-        exchange=Exchange.SSE,
+        symbol=overview.symbol,
+        exchange=overview.exchange,
         interval=Interval.DAILY,
     )
     print('deleted')
@@ -76,6 +108,20 @@ def delete():
 def printError(msg):
     print(msg)
 
+def getLatestTradeDate():
+    pro = ts.pro_api()
+    df: pandas.DataFrame = pro.trade_cal(exchange='SSE', cal_date=datetime.now().strftime("%Y%m%d"), limit=1)
+    return df["pretrade_date"].iloc[0]
+    # 000001
+    # SH
+
+def get_item_by_index(arr, index):
+    try:
+        return arr[index]
+    except IndexError:
+        return None
+
+# getLatestTradeDate()
 # download()
 update()
 # delete()

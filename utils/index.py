@@ -17,17 +17,55 @@ mpf_style = mpf.make_mpf_style(
     marketcolors=mpf.make_marketcolors(up='red', down='green', inherit=True)
 )
 
+def get_percent(nowPrice: float, aimPrice: float):
+    return (nowPrice - aimPrice) / nowPrice
+
+def get_ma_price(series: pandas.Series, ma_num: int):
+    last_index = series.count() - 1
+    if ma_num > last_index:
+        last_index = ma_num
+    return series[last_index-ma_num: last_index].mean()
+
+def list_include(list, key: str, value):
+    for item in list:
+        if item[key] == value:
+            return True
+    return False
+
+def getDataFrame(history_data):
+    bar_data_dict_list = []
+    for index, bardata in enumerate(history_data):
+        bar_dict = {
+            "index": index,
+            "datetime": bardata.datetime,
+            "open_price": bardata.open_price,
+            "close_price": bardata.close_price,
+            "low_price": bardata.low_price,
+            "high_price": bardata.high_price,
+            "turnover": bardata.turnover, # 成交额
+            "volume": bardata.volume, # 成交额
+        }
+        bar_data_dict_list.append(bar_dict)
+    df = pandas.DataFrame(bar_data_dict_list)
+    # df['date'] = df['datetime']
+    return df
+
 def getStockDataFrame():
     df1 = pd.read_csv('./assets/tushare_stock_basic.csv', dtype={'symbol': str})
     df2 = pd.read_csv('./assets/tushare_bak_basic.csv', dtype={'symbol': str})
     df1 = df1.drop_duplicates(subset="ts_code")
     df2 = df2.drop_duplicates(subset="ts_code")
     # df['symbol'] = df['ts_code'].apply(lambda str: str.split('.')[0])
-    df = pd.merge(df1, df2, on='ts_code', how='inner', suffixes=('','_delete'))
+    df_stock = pd.merge(df1, df2, on='ts_code', how='inner', suffixes=('','_delete'))
     # 删掉merge时重复的列
-    for column in df.columns.tolist():
+    for column in df_stock.columns.tolist():
         if column.find("_delete") != -1:
-            df.drop(column, axis=1, inplace=True)
+            df_stock.drop(column, axis=1, inplace=True)
+
+    # 增加指数相关信息
+    df_index = pd.read_csv('./assets/tushare_index_basic_20240225180727.csv', dtype={'symbol': str})
+
+    df = pd.merge(df_stock, df_index, on='ts_code', how='inner', suffixes=('', '_delete'))
     return df
 
 def getStockPlot(df, dotArr, title, axtitle, savePath):
