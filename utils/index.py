@@ -18,7 +18,8 @@ mpf_style = mpf.make_mpf_style(
 )
 
 def get_percent(nowPrice: float, aimPrice: float):
-    return (nowPrice - aimPrice) / nowPrice
+    num = (aimPrice - nowPrice) / nowPrice
+    return "{:.1%}".format(num)
 
 def get_ma_price(series: pandas.Series, ma_num: int):
     last_index = series.count() - 1
@@ -65,7 +66,7 @@ def getStockDataFrame():
     # 增加指数相关信息
     df_index = pd.read_csv('./assets/tushare_index_basic_20240225180727.csv', dtype={'symbol': str})
 
-    df = pd.merge(df_stock, df_index, on='ts_code', how='inner', suffixes=('', '_delete'))
+    df = pd.concat([df_stock, df_index])
     return df
 
 def getStockPlot(df, dotArr, title, axtitle, savePath):
