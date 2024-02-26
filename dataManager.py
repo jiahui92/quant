@@ -42,6 +42,8 @@ def download():
 
 def update():
     tradeDate = getLatestTradeDate()
+    print("更新交易日为：" + tradeDate)
+
     overviews = dataManagerEngine.get_bar_overview()
     total: int = len(overviews)
     count: int = 0
@@ -52,10 +54,13 @@ def update():
     #     print(f"{overview.symbol}, 进度:{count}/{total}")
     #     update_one(overview, tradeDate)
 
-    max_parallel = 5
+    max_parallel = 3
+    # lastStartTime = time.time_ns()
     for index in range(math.ceil(total / max_parallel)):
+        # sleepTime = 1000_000_000 - (time.time_ns() - lastStartTime)
+        # lastStartTime = time.time_ns()
         #最大限制1分钟500个
-        # time.sleep(1)
+        # if sleepTime > 0: time.sleep(sleepTime / 1000_000_000)
         count += max_parallel
         print(f"{overviews[index*max_parallel].symbol}, 进度:{count}/{total}")
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -83,7 +88,7 @@ def update_one(overview, tradeDate: str):
             overview.end,
             printError
         )
-        print(overview.symbol + ': 更新成功')
+        # print(overview.symbol + ': 更新成功')
     except:
         # time.sleep(1)
         print(overview.symbol + ': 更新出错，删除数据后重新下载 ')
@@ -114,8 +119,11 @@ def printError(msg):
 # 获取最近一次的交易日
 def getLatestTradeDate() -> str:
     pro = ts.pro_api()
-    df: pandas.DataFrame = pro.trade_cal(exchange='SSE', cal_date=datetime.now().strftime("%Y%m%d"), limit=1)
-    return df["pretrade_date"].iloc[0]
+    df: pandas.DataFrame = pro.trade_cal(exchange='SSE', cal_date=datetime.now().strftime("%Y%m%d"), limit=1, isopen=1)
+    if df["is_open"].iloc[0] == 1:
+        return df["cal_date"].iloc[0]
+    else:
+        return df["pretrade_date"].iloc[0]
     # 000001
     # SH
 
