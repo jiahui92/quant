@@ -1,11 +1,14 @@
 from studies.wave import find_wave, plot_wave
+from studies.maBoll import maBoolStart
 from utils.index import getStockDataFrame
 import tushare as ts
 from datetime import datetime
 
 
-for index, row in getStockDataFrame().iterrows():
-    plot_wave(row)
+# for index, row in getStockDataFrame().iterrows():
+#     plot_wave(row)
+#
+maBoolStart()
 
 
 def test_all():
