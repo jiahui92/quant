@@ -31,22 +31,28 @@ def dividendStart():
     df = pandas.DataFrame(columns=stock_data_frame.columns)
     for index, row in stock_data_frame.iterrows():
         # if index > 100: continue
-        if row['pe'] > 50 or row['pe'] < 0:
+        if row['pe'] > 50 or row['pe'] < 0 or row['profit_yoy'] < -10:
             # print(f"{row['ts_code']}: pe不符合要求，已过滤")
             continue
 
-        div = getDividend(row)
+        div, end_date = getDividend(row)
         if div > 0.05:
             print(f"{row['name']}.{row['ts_code']}: {round(div*100,2)}%")
             new_row  = pandas.Series(row, index=stock_data_frame.columns)
-            new_row ["dividend"] = round(div*100,2)
+            new_row["dividend"] = round(div*100,2)
+            new_row["end_date"] = end_date
             df = pandas.concat([df, new_row.to_frame().T ], axis=0, ignore_index=True)
 
-    df = df.sort_values(by="dividend", ascending=False)
+    cols = ['dividend', 'end_date']
+    # 行排序
+    df = df.sort_values(by=cols, ascending=False)
+    # 栏目排序
+    new_order = cols + [col for col in df if col not in cols]
+    df = df.reindex(columns=new_order)
 
     print(df.head(50))
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    df.to_csv(f"./dividend_{current_time}.csv", index=False, encoding='GBK')
+    df.to_csv(f"./temp_dividend_{current_time}.csv", index=False, encoding='GBK')
 
 def getDividend(row: pandas.DataFrame):
     # 获取分红数据
@@ -74,11 +80,11 @@ def getDividend(row: pandas.DataFrame):
     cash_div_tax = div_rows['cash_div_tax'].sum()
 
     bar_data = utils.get_latest_bar_data(row)
-    if bar_data == None:
+    if bar_data is None:
         print(f"缺少{row['ts_code']}.{row['name']}的BarData")
-        return 0
+        return 0, ''
 
     # 分红率
     # todo: 有高送转的情况下，偏差率会很大
     cash_div_tax_percent = round(cash_div_tax / bar_data.close_price, 4)
-    return cash_div_tax_percent
+    return cash_div_tax_percent, div_rows.iloc[0]['end_date']
