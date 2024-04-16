@@ -3,14 +3,24 @@ import pandas
 import pandas as pd
 import mplfinance as mpf
 import matplotlib.pyplot as plt
-
+from vnpy_ctastrategy.backtesting import load_bar_data
+from vnpy.trader.object import OrderData, TradeData, BarData, TickData
+from vnpy.trader.constant import (
+    Direction,
+    Offset,
+    Exchange,
+    Interval,
+    Status,
+)
+from typing import Callable, List, Dict, Optional, Type
+from datetime import datetime, timedelta
 
 # 支持中文
 plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
 plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
-print(mpf.available_styles())
+# print(mpf.available_styles())
 mpf_style = mpf.make_mpf_style(
     base_mpf_style='yahoo',
     rc={'font.family': 'SimHei', 'axes.unicode_minus': 'False'},
@@ -67,6 +77,7 @@ def getStockDataFrame():
     df_index = pd.read_csv('./assets/tushare_index_basic_20240225180727.csv', dtype={'symbol': str})
 
     df = pd.concat([df_stock, df_index])
+    # 类型: ts_code, trade_date, open, close, pe
     return df
 
 def getStockPlot(df, dotArr, title, axtitle, savePath):
@@ -124,3 +135,18 @@ def makeSingleDotSeries(series:pandas.Series, index):
 def plotStock(title, df):
     plt = getStockPlot(title, df)
     plt.show()
+
+# 获取最新的行情数据
+def get_latest_bar_data(row):
+    nowDate = datetime.now()
+    # todo 获取最近30天的数据（貌似不能直接获取最后一条数据），再取最后一天
+    start = nowDate - timedelta(30)
+    history_data: List[BarData] = load_bar_data(
+        symbol=row['symbol'],
+        exchange=Exchange[row['exchange']],
+        start=start,
+        end=nowDate,
+        interval=Interval.DAILY,
+    )
+    if len(history_data) == 0: return None
+    return history_data[len(history_data) - 1]
