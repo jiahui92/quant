@@ -11,13 +11,18 @@ import tushare as ts
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.engine import MainEngine
 from vnpy_datamanager.engine import ManagerEngine
-from utils.index import getStockDataFrame
+import utils.index as utils
 
 mainEngine = MainEngine()
 dataManagerEngine = ManagerEngine(mainEngine, None)
 
 def download():
-    df = getStockDataFrame()
+    overviews = dataManagerEngine.get_bar_overview()
+    existMap = {}
+    for overview in overviews:
+        existMap[overview.symbol] = True
+
+    df = utils.getStockDataFrame()
     count = 0
     total = len(df)
     for index, row in df.iterrows():
@@ -25,6 +30,9 @@ def download():
         # if row['symbol'] != '605111': continue
         # if row['exchange'] != 'BSE': continue
         # delete_one(row)
+
+        # 如果已经下载过了，则直接跳过
+        if existMap.get(row['ts_code'].split('.')[0]): continue
 
         try:
             bardataCount = dataManagerEngine.download_bar_data(
@@ -36,7 +44,7 @@ def download():
                 output=printError,
             )
             progress = int(round(count / total * 100, 0))
-            print(f"{row['symbol']} {bardataCount}, 进度:{progress}%")
+            print(f"{row['symbol']}.{row['name']}, 进度:{progress}%")
         except:
             print('下载出错: ' + row['symbol'] + " " + row['exchange'])
 
@@ -53,6 +61,9 @@ def update():
         # progress = int(round(count / total * 100, 0))
         print(f"{overview.symbol}, 进度:{count}/{total}")
         update_one(overview, tradeDate)
+
+    # 每次更新时，根据最新的./assets/*.csv下载新股
+    download()
 
     # max_parallel = 2
     # # lastStartTime = time.time_ns()
@@ -133,7 +144,6 @@ def get_item_by_index(arr, index):
     except IndexError:
         return None
 
-# getLatestTradeDate()
-# download()
-update()
 # delete()
+utils.calculate_function_runtime(update)
+# utils.calculate_function_runtime(download)
