@@ -48,26 +48,26 @@ def update():
     total: int = len(overviews)
     count: int = 0
 
-    # for overview in overviews:
-    #     count += 1
-    #     # progress = int(round(count / total * 100, 0))
-    #     print(f"{overview.symbol}, 进度:{count}/{total}")
-    #     update_one(overview, tradeDate)
+    for overview in overviews:
+        count += 1
+        # progress = int(round(count / total * 100, 0))
+        print(f"{overview.symbol}, 进度:{count}/{total}")
+        update_one(overview, tradeDate)
 
-    max_parallel = 3
-    # lastStartTime = time.time_ns()
-    for index in range(math.ceil(total / max_parallel)):
-        # sleepTime = 1000_000_000 - (time.time_ns() - lastStartTime)
-        # lastStartTime = time.time_ns()
-        #最大限制1分钟500个
-        # if sleepTime > 0: time.sleep(sleepTime / 1000_000_000)
-        count += max_parallel
-        print(f"{overviews[index*max_parallel].symbol}, 进度:{count}/{total}")
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            # 提交函数执行任务，并获得 Future 对象列表
-            futures = [executor.submit(update_one, get_item_by_index(overviews, index*max_parallel+i), tradeDate) for i in range(max_parallel)]
-            # 获取每个任务的结果
-            results = [future.result() for future in concurrent.futures.as_completed(futures)]
+    # max_parallel = 2
+    # # lastStartTime = time.time_ns()
+    # for index in range(math.ceil(total / max_parallel)):
+    #     # sleepTime = 1000_000_000 - (time.time_ns() - lastStartTime)
+    #     # lastStartTime = time.time_ns()
+    #     #最大限制1分钟500个
+    #     # if sleepTime > 0: time.sleep(sleepTime / 1000_000_000)
+    #     count += max_parallel
+    #     print(f"{overviews[index*max_parallel].symbol}, 进度:{count}/{total}")
+    #     with concurrent.futures.ThreadPoolExecutor() as executor:
+    #         # 提交函数执行任务，并获得 Future 对象列表
+    #         futures = [executor.submit(update_one, get_item_by_index(overviews, index*max_parallel+i), tradeDate) for i in range(max_parallel)]
+    #         # 获取每个任务的结果
+    #         results = [future.result() for future in concurrent.futures.as_completed(futures)]
 
 
 def update_one(overview, tradeDate: str):
