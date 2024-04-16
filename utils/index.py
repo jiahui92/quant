@@ -77,6 +77,16 @@ def getStockDataFrame():
     df_index = pd.read_csv('./assets/tushare_index_basic_20240225180727.csv', dtype={'symbol': str})
 
     df = pd.concat([df_stock, df_index])
+
+    exchange_map = { 'SH': 'SSE', 'SZ': 'SZSE', 'BJ': 'BSE' }
+    new_cols = []
+    for index, row in df.iterrows():
+        exchange = row['ts_code'].split('.')[1]
+        if exchange_map.get(exchange) is not None:
+            exchange = exchange_map[exchange]
+        new_cols.append(exchange)
+    df['exchange'] = new_cols
+
     # 类型: ts_code, trade_date, open, close, pe
     return df
 
