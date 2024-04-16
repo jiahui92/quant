@@ -14,6 +14,8 @@ from vnpy.trader.constant import (
 )
 from typing import Callable, List, Dict, Optional, Type
 from datetime import datetime, timedelta
+import time
+
 
 # 支持中文
 plt.rcParams['font.family'] = 'sans-serif'
@@ -78,6 +80,7 @@ def getStockDataFrame():
 
     df = pd.concat([df_stock, df_index])
 
+    # 动态计算exchange列
     exchange_map = { 'SH': 'SSE', 'SZ': 'SZSE', 'BJ': 'BSE' }
     new_cols = []
     for index, row in df.iterrows():
@@ -86,6 +89,10 @@ def getStockDataFrame():
             exchange = exchange_map[exchange]
         new_cols.append(exchange)
     df['exchange'] = new_cols
+
+    # 过滤掉退市股 和 ST
+    df = df[df['list_status'] == 'L']
+    df = df[~df['name'].str.contains('ST')]
 
     # 类型: ts_code, trade_date, open, close, pe
     return df
@@ -160,3 +167,18 @@ def get_latest_bar_data(row):
     )
     if len(history_data) == 0: return None
     return history_data[len(history_data) - 1]
+
+
+# 计算函数的运行时间
+def calculate_function_runtime(func):
+    start_time = time.time()  # 记录开始时间
+    func()  # 调用函数
+    end_time = time.time()  # 记录结束时间
+
+    # 计算运行时间（单位：秒）
+    runtime_seconds = end_time - start_time
+
+    # 将秒转换为分钟
+    runtime_minutes = runtime_seconds / 60
+
+    print("Function runtime:", runtime_minutes, "minutes")
