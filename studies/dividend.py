@@ -10,6 +10,7 @@ import pandas
 # 预测分红 = （1 + 预测利润率）* 上期分红  （这里假设股利率稳定）
 # 预测利润率 = 根据近三年利润增速预测 或者 研报增速
 
+# x年翻倍走势图
 
 ## 分红计算公式（利润加权）
 ##    近期利润的预测？？？这样计算不准确
@@ -29,33 +30,46 @@ def dividendStart():
 
     stock_data_frame = getStockDataFrame()
     df = pandas.DataFrame(columns=stock_data_frame.columns)
+
+    count = 0
     for index, row in stock_data_frame.iterrows():
-        # if index > 100: continue
-        if row['pe'] > 50 or row['pe'] < 0 or row['profit_yoy'] < -10:
+        count += 1
+        # if index > 10: continue
+        if row['pe'] > 50 or row['pe'] < 0 or row['profit_yoy'] < -10 or row['rev_yoy'] < -10:
             # print(f"{row['ts_code']}: pe不符合要求，已过滤")
             continue
 
-        div, end_date = getDividend(row)
+        bar_data = utils.get_latest_bar_data(row)
+        div, end_date = getDividend(row, bar_data)
         if div > 0.05:
-            print(f"{row['ts_code']}.{row['name']}: {round(div*100,2)}% {end_date}")
+            print(f"{row['ts_code']}.{row['name']}: {round(div*100,2)}% {end_date}   进度:{count}/{len(stock_data_frame)}")
             new_row  = pandas.Series(row, index=stock_data_frame.columns)
-            new_row["dividend"] = round(div*100,2)
             new_row["end_date"] = end_date
+            new_row["dividend"] = round(div*100,1)
+            peg = utils.safe_division(new_row['pe'], new_row['profit_yoy'])
+            if peg is not None:
+                new_row["peg"] = round(peg, 1)
+            new_row["profit_yoy"] = round(new_row['profit_yoy'], 0)
+            new_row["total_mv"] = int(bar_data.close_price * new_row['total_share'])  # 总市值
+            new_row["float_mv"] = int(bar_data.close_price * new_row['float_share'])  # 流通市值
+            new_row["link"] = f"https://quote.eastmoney.com/{row['symbol']}.html#fullScreenChart"
             df = pandas.concat([df, new_row.to_frame().T ], axis=0, ignore_index=True)
 
-    cols = ['dividend', 'end_date']
     # 行排序
-    df = df.sort_values(by=cols, ascending=False)
+    df = df.sort_values(by=['end_date', 'dividend'], ascending=False)
     # 栏目排序
+    cols = [
+        'end_date', 'dividend', 'peg', 'float_mv', 'total_mv',
+        'symbol', 'name', 'pe', 'pb', 'profit_yoy', 'rev_yoy', 'holder_num'
+    ]
     new_order = cols + [col for col in df if col not in cols]
     df = df.reindex(columns=new_order)
 
     print(df.head(50))
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    df.to_csv(f"./temp_dividend_{current_time}.csv", index=False, encoding='GBK')
+    df.to_csv(f"./assets/temp_dividend_{current_time}.csv", index=False, encoding='GBK')
 
-def getDividend(row: pandas.DataFrame):
-    bar_data = utils.get_latest_bar_data(row)
+def getDividend(row: pandas.DataFrame, bar_data):
     if bar_data is None:
         print(f"缺少{row['ts_code']}.{row['name']}的BarData")
         return 0, ''

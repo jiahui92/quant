@@ -2,6 +2,7 @@ from studies.wave import find_wave, plot_wave
 from studies.maBoll import maBoolStart
 from studies.dividend import dividendStart
 from utils.index import getStockDataFrame
+import utils.index as utils
 import tushare as ts
 from datetime import datetime
 
@@ -10,8 +11,7 @@ from datetime import datetime
 #     plot_wave(row)
 #
 # maBoolStart()
-dividendStart()
-
+utils.calculate_function_runtime(dividendStart)
 
 def test_all():
     pro = ts.pro_api()
