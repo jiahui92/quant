@@ -15,6 +15,7 @@ from vnpy.trader.constant import (
 from typing import Callable, List, Dict, Optional, Type
 from datetime import datetime, timedelta
 import time
+import tushare as ts
 
 
 # 支持中文
@@ -64,8 +65,21 @@ def getDataFrame(history_data):
     return df
 
 def getStockDataFrame():
-    df1 = pd.read_csv('./assets/tushare_stock_basic.csv', dtype={'symbol': str})
-    df2 = pd.read_csv('./assets/tushare_bak_basic.csv', dtype={'symbol': str})
+    pro = ts.pro_api()
+
+
+    # df1 = pd.read_csv('./assets/tushare_stock_basic.csv', dtype={'symbol': str})
+    df1 = pro.stock_basic(exchange='', list_status='L', fields=[
+        "ts_code", "symbol", "name", "area", "industry", "cnspell", "market", "list_date",
+        "act_name", "act_ent_type", "list_status"
+    ])
+    # df2 = pd.read_csv('./assets/tushare_bak_basic.csv', dtype={'symbol': str})
+    df2 = pro.bak_basic(limit=len(df1), fields=[
+        "trade_date", "ts_code", "name", "industry", "area", "pe", "float_share", "total_share",
+        "total_assets", "liquid_assets", "fixed_assets", "reserved", "reserved_pershare", "eps",
+        "bvps", "pb", "list_date", "undp", "per_undp", "rev_yoy", "profit_yoy", "gpr", "npr",
+        "holder_num"
+    ])
     df1 = df1.drop_duplicates(subset="ts_code")
     df2 = df2.drop_duplicates(subset="ts_code")
     # df['symbol'] = df['ts_code'].apply(lambda str: str.split('.')[0])
@@ -182,3 +196,10 @@ def calculate_function_runtime(func):
     runtime_minutes = runtime_seconds / 60
 
     print("Function runtime:", runtime_minutes, "minutes")
+
+def safe_division(a, b):
+    try:
+        result = a / b
+    except ZeroDivisionError:
+        return None
+    return result
