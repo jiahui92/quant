@@ -1,7 +1,6 @@
 import math
 import string
-import time
-from datetime import datetime
+from datetime import datetime, time
 import concurrent.futures
 
 import pandas
@@ -132,11 +131,14 @@ def getLatestTradeDate() -> str:
     pro = ts.pro_api()
     df: pandas.DataFrame = pro.trade_cal(exchange='SSE', cal_date=datetime.now().strftime("%Y%m%d"), limit=1, isopen=1)
     if df["is_open"].iloc[0] == 1:
-        return df["cal_date"].iloc[0]
-    else:
-        return df["pretrade_date"].iloc[0]
-    # 000001
-    # SH
+        current_date = datetime.now().date().strftime("%Y%m%d")
+        open_date = df["cal_date"].iloc[0]
+        # 当天未开市：tushare在下午6点更新当天股市信息
+        if open_date == current_date and datetime.now().time() > time(18, 0, 0):
+            return open_date
+
+    return df["pretrade_date"].iloc[0]
+
 
 def get_item_by_index(arr, index):
     try:
