@@ -1,6 +1,3 @@
-## 数据准备
-##  获取近n年的分红，看是否稳定
-##  获取近几年的利润
 import time
 from datetime import datetime
 
@@ -10,7 +7,7 @@ import pandas
 # 预测分红 = （1 + 预测利润率）* 上期分红  （这里假设股利率稳定）
 # 预测利润率 = 根据近三年利润增速预测 或者 研报增速
 
-# x年翻倍走势图
+# 分红走势图
 
 ## 分红计算公式（利润加权）
 ##    近期利润的预测？？？这样计算不准确
@@ -19,6 +16,8 @@ import pandas
 # 查看指标
 # 近期分红率是否稳定
 # 近期利润增率是否稳定
+
+
 
 from utils.index import getStockDataFrame, get_latest_bar_data
 import utils.index as utils
@@ -39,21 +38,23 @@ def dividendStart():
             # print(f"{row['ts_code']}: pe不符合要求，已过滤")
             continue
 
+        peg = utils.safe_division(row['pe'], row['profit_yoy'])
+        if peg is None or peg > 1 or peg < 0:
+            continue
+
+
         bar_data = utils.get_latest_bar_data(row)
         div, end_date = getDividend(row, bar_data)
         if div > 0.05:
             print(f"{row['ts_code']}.{row['name']}: {round(div*100,2)}% {end_date}   进度:{count}/{len(stock_data_frame)}")
-            new_row  = pandas.Series(row, index=stock_data_frame.columns)
+            new_row = pandas.Series(row, index=stock_data_frame.columns)
             new_row["end_date"] = end_date
             new_row["dividend"] = round(div*100,1)
-            peg = utils.safe_division(new_row['pe'], new_row['profit_yoy'])
-            if peg is not None:
-                new_row["peg"] = round(peg, 1)
             new_row["profit_yoy"] = round(new_row['profit_yoy'], 0)
+            new_row["peg"] = round(peg, 1)
             new_row["total_mv"] = int(bar_data.close_price * new_row['total_share'])  # 总市值
             new_row["float_mv"] = int(bar_data.close_price * new_row['float_share'])  # 流通市值
-            new_row["link"] = f"https://quote.eastmoney.com/{row['symbol']}.html#fullScreenChart"
-            df = pandas.concat([df, new_row.to_frame().T ], axis=0, ignore_index=True)
+            df = pandas.concat([df, new_row.to_frame().T], axis=0, ignore_index=True)
 
     # 行排序
     df = df.sort_values(by=['end_date', 'dividend'], ascending=False)
