@@ -13,10 +13,8 @@ import pandas
 ##    近期利润的预测？？？这样计算不准确
 ##    券商未来利润的估计
 
-# 查看指标
-# 近期分红率是否稳定
-# 近期利润增率是否稳定
 
+# todo: 获取的数据貌似有问题（分红年度、分红率的计算）
 
 
 from utils.index import getStockDataFrame, get_latest_bar_data
@@ -41,6 +39,12 @@ def dividendStart():
         peg = utils.safe_division(row['pe'], row['profit_yoy'])
         if peg is None or peg > 1 or peg < 0:
             continue
+
+        # todo 盈利是否稳定
+        # todo 分红是否稳定
+
+        # todo 地产链置灰
+        # todo 今天更新的标红
 
 
         bar_data = utils.get_latest_bar_data(row)
