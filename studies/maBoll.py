@@ -1,3 +1,5 @@
+import re
+
 import numpy
 import pandas
 from vnpy_ctastrategy.backtesting import load_bar_data
@@ -51,22 +53,27 @@ def maBollStart():
     style_df.to_excel(f"./assets/temp_zixuan.xlsx", engine='openpyxl', index=False)
 
 
-def add_df_style(row):
+def add_df_style(row: pandas.Series):
     lightgreen = 'background-color: lightgreen;'
     lightred = 'background-color: lightpink;'
 
     result = []
-    for e in row:
-        if isinstance(e, str):
+    for key, value in row.items():
+        if isinstance(value, str):
             result.append('')
-        elif -3 < e < 0:
-            result.append(lightgreen)
-        elif 0 < e < 3:
+        elif re.search('High', key) and value < 3:
             result.append(lightred)
-        elif e == 0:
-            result.append('background-color: lightyellow;')
+        elif re.search('Low', key) and value > -3:
+            result.append(lightgreen)
         else:
-            result.append('')
+            if -3 < value < 0:
+                result.append(lightgreen)
+            elif 0 < value < 3:
+                result.append(lightred)
+            elif value == 0:
+                result.append('background-color: lightyellow;')
+            else:
+                result.append('')
 
     # name处重点标注颜色
     if result.count(lightgreen) >= 4: result[0] = lightgreen
