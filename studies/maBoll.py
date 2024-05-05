@@ -21,7 +21,7 @@ from utils.index import getStockDataFrame
 
 # todo: 增加指数和基金数据收集
 def maBollStart():
-    zx_df = pd.read_csv('./assets/zixuan.csv', dtype={'ts_code': str})
+    zx_df = pd.read_excel('./assets/zixuan.xlsx', dtype={'ts_code': str})
     df = pandas.DataFrame(columns=zx_df.columns)
 
     for index, row in zx_df.iterrows():
@@ -37,13 +37,14 @@ def maBollStart():
         row['ma20 %'] = ma20Percent
         row['ma30 %'] = ma30Percent
         row['ma60 %'] = ma60Percent
-        row['bollHigh %'] = bollHighPercent
-        row['bollLow %'] = bollLowPercent
+        row['boll'] = pd.NaT
+        row['High %'] = bollHighPercent
+        row['Low %'] = bollLowPercent
 
         df = pandas.concat([df, row.to_frame().T], axis=0, ignore_index=True)
 
     style_df = df.style.apply(add_df_style, axis=1, subset=[
-        'ma5 %', 'ma10 %', 'ma20 %', 'ma30 %', 'ma60 %', 'bollHigh %', 'bollLow %'
+        'name', 'ma5 %', 'ma10 %', 'ma20 %', 'ma30 %', 'ma60 %', 'High %', 'Low %'
     ])
 
     # current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -51,19 +52,26 @@ def maBollStart():
 
 
 def add_df_style(row):
-    highlight = 'background-color: palegreen;'
-    default = ''
+    lightgreen = 'background-color: lightgreen;'
+    lightred = 'background-color: lightpink;'
 
     result = []
     for e in row:
-        if -5 < e < 0:
-            result.append('background-color: lightgreen;')
-        elif 0 < e < 5:
-            result.append('background-color: lightpink;')
+        if isinstance(e, str):
+            result.append('')
+        elif -3 < e < 0:
+            result.append(lightgreen)
+        elif 0 < e < 3:
+            result.append(lightred)
         elif e == 0:
             result.append('background-color: lightyellow;')
         else:
             result.append('')
+
+    # name处重点标注颜色
+    if result.count(lightgreen) >= 4: result[0] = lightgreen
+    if result.count(lightred) >= 4: result[0] = lightred
+
     return result
 
 

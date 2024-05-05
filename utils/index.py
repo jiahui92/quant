@@ -175,7 +175,7 @@ def get_exchange(code: str) -> Exchange:
     if code.find(".") != -1: exchange = code.split('.')[1]
     elif re.search('^[1|0|3]', code): exchange = "SZ"
     elif re.search('^[5|6]', code): exchange = "SH"
-    elif re.search('^[8]', code): exchange = "BJ"
+    elif re.search('^[4|8]', code): exchange = "BJ"
     # 基金 or 指数
     return exchange_map.get(exchange)
 
