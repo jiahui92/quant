@@ -18,40 +18,64 @@ from prettytable import PrettyTable
 import utils.index as utils
 from utils.index import getStockDataFrame
 
-table = PrettyTable()
-table.field_names = ["name", "nowPrice", "ma5", "ma10", "ma20", "ma30", "ma60", "bollHigh", "bollLow"]
 
-def maBoolStart():
-    # 设计数据结果
-    #   默认上证指数、收藏指数等
-    stockArr = [
-        {"symbol": '000001', "exchange": "SSE", "name": "上证指数", "tags": ['main']},
-        {"symbol": '300394', "exchange": "SZSE", "name": "天孚通信", "tags": ['持仓']},
-        {"symbol": '603259', "exchange": "SSE", "name": "药明康德", "tags": ['持仓']},
-        {"symbol": '688981', "exchange": "SSE", "name": "中芯国际", "tags": ['持仓']},
-        {"symbol": '872808', "exchange": "BSE", "name": "曙光数创", "tags": ['持仓']},
-        # 纳指
-        # 纳指科技
-        # 纳指生物
-    ]
+# todo: 增加指数和基金数据收集
+def maBollStart():
+    zx_df = pd.read_csv('./assets/zixuan.csv', dtype={'ts_code': str})
+    df = pandas.DataFrame(columns=zx_df.columns)
 
-    for item in stockArr:
-        maBoll(item)
+    for index, row in zx_df.iterrows():
+        if pd.isna(row['ts_code']): continue
+        symbol = row['ts_code'].split('.')[0]
+        exchange = utils.get_exchange(row['ts_code'])
 
-    print(table)
+        nowPrice, ma5Percent, ma10Percent, ma20Percent, ma30Percent, ma60Percent, bollHighPercent, bollLowPercent = maBoll(
+            row['name'], symbol, exchange)
+        row['nowPrice'] = nowPrice
+        row['ma5 %'] = ma5Percent
+        row['ma10 %'] = ma10Percent
+        row['ma20 %'] = ma20Percent
+        row['ma30 %'] = ma30Percent
+        row['ma60 %'] = ma60Percent
+        row['bollHigh %'] = bollHighPercent
+        row['bollLow %'] = bollLowPercent
 
-def maBoll(row):
-    # nowDate = datetime(2023, 12, 8)
-    # nowDate = datetime.now()
+        df = pandas.concat([df, row.to_frame().T], axis=0, ignore_index=True)
 
-    # isInclude = utils.list_include(stockArr, "code", row["ts_code"])
-    # if not isInclude: return
+    style_df = df.style.apply(add_df_style, axis=1, subset=[
+        'ma5 %', 'ma10 %', 'ma20 %', 'ma30 %', 'ma60 %', 'bollHigh %', 'bollLow %'
+    ])
+
+    # current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    style_df.to_excel(f"./assets/temp_zixuan.xlsx", engine='openpyxl', index=False)
+
+
+def add_df_style(row):
+    highlight = 'background-color: palegreen;'
+    default = ''
+
+    result = []
+    for e in row:
+        if -5 < e < 0:
+            result.append('background-color: lightgreen;')
+        elif 0 < e < 5:
+            result.append('background-color: lightpink;')
+        elif e == 0:
+            result.append('background-color: lightyellow;')
+        else:
+            result.append('')
+    return result
+
+
+def maBoll(name, symbol, exchange):
+    emptyResult = pd.NaT, pd.NaT, pd.NaT, pd.NaT, pd.NaT, pd.NaT, pd.NaT, pd.NaT
+    if exchange == None: return emptyResult
 
     nowDate = datetime.now()
     start = nowDate - timedelta(100)
     history_data: List[BarData] = load_bar_data(
-        symbol=row['symbol'],
-        exchange=Exchange[row['exchange']],
+        symbol=symbol,
+        exchange=Exchange[exchange],
         start=start,
         end=nowDate,
         interval=Interval.DAILY,
@@ -60,8 +84,8 @@ def maBoll(row):
 
     lastIndex = len(history_data) - 1
     if lastIndex == -1:
-        print(row['name'] + ": 数据错误")
-        return
+        print(name + ": 数据错误")
+        return emptyResult
     nowPrice = df['close_price'].iloc[lastIndex]
     ma5 = utils.get_ma_price(df['close_price'], 5)
     ma10 = utils.get_ma_price(df['close_price'], 10)
@@ -88,18 +112,17 @@ def maBoll(row):
     bollLowPercent = utils.get_percent(nowPrice, bollLow)
 
     # print(row["name"], ma5Percent, ma10Percent, ma20Percent, bollHighPercent, bollLowPercent)
-    table.add_row([
-        row["name"], nowPrice,
-        ma5Percent, ma10Percent, ma20Percent, ma30Percent, ma60Percent,
-        bollHighPercent, bollLowPercent
-    ])
+    # table.add_row([
+    #     row["name"], nowPrice,
+    #     ma5Percent, ma10Percent, ma20Percent, ma30Percent, ma60Percent,
+    #     bollHighPercent, bollLowPercent
+    # ])
+    return nowPrice, ma5Percent, ma10Percent, ma20Percent, ma30Percent, ma60Percent, bollHighPercent, bollLowPercent
 
     # 输出结果
     #   标记某个股票的长时间段的结果
 
     # 已买：顶点提示，支撑点提示！！！
-
-
 
     #
     # # if (symbol == '300093'): print(preWithdrawal, preMin, lastMin)
@@ -120,4 +143,4 @@ def maBoll(row):
     #     plt = utils.getStockPlot(df, dotArr, title, axtitle, savePath)
     #     plt.close()
 
-        # plt.show()
+    # plt.show()

@@ -1,5 +1,5 @@
 from studies.wave import find_wave, plot_wave
-from studies.maBoll import maBoolStart
+from studies.maBoll import maBollStart
 from studies.dividend import dividendStart
 from utils.index import getStockDataFrame
 import utils.index as utils
@@ -10,8 +10,8 @@ from datetime import datetime
 # for index, row in getStockDataFrame().iterrows():
 #     plot_wave(row)
 #
-# maBoolStart()
-utils.calculate_function_runtime(dividendStart)
+utils.calculate_function_runtime(maBollStart)
+# utils.calculate_function_runtime(dividendStart)
 
 def test_all():
     pro = ts.pro_api()

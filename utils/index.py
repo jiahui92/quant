@@ -1,3 +1,5 @@
+import re
+
 import numpy
 import pandas
 import pandas as pd
@@ -32,10 +34,10 @@ mpf_style = mpf.make_mpf_style(
 
 def get_percent(nowPrice: float, aimPrice: float):
     num = (aimPrice - nowPrice) / nowPrice
-    return "{:.1%}".format(num)
+    return round(num * 100, 1)
 
 def get_ma_price(series: pandas.Series, ma_num: int):
-    last_index = series.count() - 1
+    last_index = series.count()
     if ma_num > last_index:
         last_index = ma_num
     return series[last_index-ma_num: last_index].mean()
@@ -166,6 +168,16 @@ def makeSingleDotSeries(series:pandas.Series, index):
 def plotStock(title, df):
     plt = getStockPlot(title, df)
     plt.show()
+
+def get_exchange(code: str) -> Exchange:
+    exchange_map = {'SH': 'SSE', 'SZ': 'SZSE', 'BJ': 'BSE'}
+    exchange = ''
+    if code.find(".") != -1: exchange = code.split('.')[1]
+    elif re.search('^[1|0|3]', code): exchange = "SZ"
+    elif re.search('^[5|6]', code): exchange = "SH"
+    elif re.search('^[8]', code): exchange = "BJ"
+    # 基金 or 指数
+    return exchange_map.get(exchange)
 
 # 获取最新的行情数据
 def get_latest_bar_data(row):

@@ -99,9 +99,8 @@ def update_one(overview, tradeDate: str):
             printError
         )
         # print(overview.symbol + ': 更新成功')
-    except:
-        # time.sleep(1)
-        print(overview.symbol + ': 更新出错，删除数据后重新下载 ')
+    except Exception as e:
+        print(overview.symbol + ': 更新出错，删除数据后重新下载 ' + str(e))
         dataManagerEngine.delete_bar_data(
             overview.symbol,
             overview.exchange,
@@ -133,8 +132,8 @@ def getLatestTradeDate() -> str:
     if df["is_open"].iloc[0] == 1:
         current_date = datetime.now().date().strftime("%Y%m%d")
         open_date = df["cal_date"].iloc[0]
-        # 当天未开市：tushare在下午6点更新当天股市信息
-        if open_date == current_date and datetime.now().time() > time(18, 0, 0):
+        # 当天未开市：tushare在17:30更新当天股市信息
+        if open_date == current_date and datetime.now().time() > time(17, 30, 0):
             return open_date
 
     return df["pretrade_date"].iloc[0]
