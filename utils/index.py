@@ -169,8 +169,9 @@ def plotStock(title, df):
     plt = getStockPlot(title, df)
     plt.show()
 
-def get_exchange(code: str) -> Exchange:
-    exchange_map = {'SH': 'SSE', 'SZ': 'SZSE', 'BJ': 'BSE'}
+exchange_map = {'SH': 'SSE', 'SZ': 'SZSE', 'BJ': 'BSE'}
+
+def get_exchange(code: str) -> str | None:
     exchange = ''
     if code.find(".") != -1: exchange = code.split('.')[1]
     elif re.search('^[1|0|3]', code): exchange = "SZ"
@@ -215,3 +216,7 @@ def safe_division(a, b):
     except ZeroDivisionError:
         return None
     return result
+
+def get_datetime(time_str: str, time_format = '%Y%m%d'):
+    # 根据时间字符串和格式初始化 datetime 对象
+    return datetime.strptime(time_str, time_format)
