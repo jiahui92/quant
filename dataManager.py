@@ -4,6 +4,7 @@ from datetime import datetime, time, timedelta
 import concurrent.futures
 
 import pandas
+import pandas as pd
 import tushare as ts
 from typing import List
 
@@ -12,6 +13,8 @@ from vnpy.trader.object import OrderData, TradeData, BarData, TickData
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.engine import MainEngine
 from vnpy_datamanager.engine import ManagerEngine
+from vnpy_tushare.tushare_datafeed import to_ts_asset
+
 import utils.index as utils
 
 mainEngine = MainEngine()
@@ -21,7 +24,8 @@ def download():
     overviews = dataManagerEngine.get_bar_overview()
     existMap = {}
     for overview in overviews:
-        existMap[overview.symbol] = True
+        key = f"{overview.symbol}.{overview.exchange.value}"
+        existMap[key] = True
 
     df = utils.getStockDataFrame()
     count = 0
@@ -33,7 +37,11 @@ def download():
         # delete_one(row)
 
         # 如果已经下载过了，则直接跳过
-        if existMap.get(row['ts_code'].split('.')[0]): continue
+        key = utils.get_vn_code(row['ts_code'])
+        # 是否为指数: 指数的更新形式暂时为重新下载
+        is_index = to_ts_asset(row['symbol'], Exchange[utils.get_exchange(row['ts_code'])]) == "I"
+        if not is_index and existMap.get(key):
+            continue
 
         try:
             bardataCount = dataManagerEngine.download_bar_data(
@@ -45,9 +53,9 @@ def download():
                 output=printError,
             )
             progress = int(round(count / total * 100, 0))
-            print(f"{row['symbol']}.{row['name']}, 进度:{progress}%")
+            print(f"{row['ts_code']}.{row['name']}, 进度:{progress}%")
         except:
-            print('下载出错: ' + row['symbol'] + " " + row['exchange'])
+            print('下载出错: ' + row['ts_code'])
 
 def update():
     overviews = dataManagerEngine.get_bar_overview()
@@ -56,6 +64,8 @@ def update():
 
     trade_dates = get_trade_dates(overview.end)
     trade_dates.reverse()
+
+    # trade_dates = ['20240506']
     for trade_date in trade_dates:
         print("正在更新交易日：" + trade_date)
         update_one_day(trade_date)
@@ -88,27 +98,46 @@ def update():
     #         # 获取每个任务的结果
     #         results = [future.result() for future in concurrent.futures.as_completed(futures)]
 
-
-def update_one_day(tradeDate: str):
+def update_one_day(trade_date: str):
     pro = ts.pro_api()
     # 每次最多1W条数据，需要区分股票、基金、指数分别进行请求
-    df = pro.daily(**{
-        "trade_date": tradeDate,
-    }, fields=[
-        "ts_code", "trade_date", "open", "high", "low", "close", "pre_close", "change", "pct_chg", "vol", "amount"
-    ])
+    df_stock = pro.daily(trade_date=trade_date)  # 股票
+    # 指数: 暂时在download，因为symbol必传，无法优化
+    # df_index = pro.index_daily(trade_date=trade_date)
+    df_fund = pro.fund_daily(trade_date=trade_date)  # 基金
+    # df_fund = df_fund[df_fund['market'] == 'E']
+    # df_fund = df_fund[df_fund['status'] == 'L']
+
+    df = pd.concat([df_stock, df_fund])
+    df.reset_index()
+
 
     bars: List[BarData] = []
 
-    print(f"count:{len(df)}")
+    # print(f"stock:{len(df_stock)}, index:{len(df_index)}, fund:{df_fund}")
+    print(f"stock:{len(df_stock)}, fund:{len(df_fund)}")
     if len(df) == 0: return
+
+    overviews = dataManagerEngine.get_bar_overview()
+    existMap = {}
+    for overview in overviews:
+        key = f"{overview.symbol}.{overview.exchange.value}"
+        existMap[key] = True
 
     for index, row in df.iterrows():
         symbol = row['ts_code'].split('.')[0]
+        exchange = Exchange[utils.get_exchange(row['ts_code'])]
+
+        print(f"{row['ts_code']}, {index}/{len(df)}")
+
+        key = utils.get_vn_code(row['ts_code'])
+        if existMap.get(key) is None:
+            continue
+
         bar: BarData = BarData(
             symbol=symbol,
-            exchange=Exchange[utils.get_exchange(row['ts_code'])],
-            datetime=utils.get_datetime(tradeDate),
+            exchange=exchange,
+            datetime=utils.get_datetime(trade_date),
             interval=Interval.DAILY,
             volume=float(row['vol']),
             open_price=float(row['open']),

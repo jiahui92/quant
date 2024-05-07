@@ -69,46 +69,62 @@ def getDataFrame(history_data):
 def getStockDataFrame():
     pro = ts.pro_api()
 
-
     # df1 = pd.read_csv('./assets/tushare_stock_basic.csv', dtype={'symbol': str})
     df1 = pro.stock_basic(exchange='', list_status='L', fields=[
         "ts_code", "symbol", "name", "area", "industry", "cnspell", "market", "list_date",
         "act_name", "act_ent_type", "list_status"
     ])
-    # df2 = pd.read_csv('./assets/tushare_bak_basic.csv', dtype={'symbol': str})
-    df2 = pro.bak_basic(limit=len(df1), fields=[
+
+    # 此接口每天只能访问20次，报错时改为读取本地文件
+    try:
+        df2 = pro.bak_basic(limit=len(df1), fields=[
         "trade_date", "ts_code", "name", "industry", "area", "pe", "float_share", "total_share",
         "total_assets", "liquid_assets", "fixed_assets", "reserved", "reserved_pershare", "eps",
         "bvps", "pb", "list_date", "undp", "per_undp", "rev_yoy", "profit_yoy", "gpr", "npr",
         "holder_num"
-    ])
+        ])
+        df2.to_csv('./assets/temp_tushare_bak_basic.csv', index=False, encoding='GBK')
+    except Exception as e:
+        print('bak_basic接口请求出错了，切换为读取本地文件：', e)
+        df2 = pd.read_csv('./assets/temp_tushare_bak_basic.csv', dtype={'symbol': str}, encoding='GBK')
+
     df1 = df1.drop_duplicates(subset="ts_code")
     df2 = df2.drop_duplicates(subset="ts_code")
     # df['symbol'] = df['ts_code'].apply(lambda str: str.split('.')[0])
     df_stock = pd.merge(df1, df2, on='ts_code', how='inner', suffixes=('','_delete'))
+    # 过滤掉退市股 和 ST
+    df_stock = df_stock[df_stock['list_status'] == 'L']
+    df_stock = df_stock[~df_stock['name'].str.contains('ST')]
+
     # 删掉merge时重复的列
     for column in df_stock.columns.tolist():
         if column.find("_delete") != -1:
             df_stock.drop(column, axis=1, inplace=True)
 
-    # 增加指数相关信息
-    df_index = pd.read_csv('./assets/tushare_index_basic_20240225180727.csv', dtype={'symbol': str})
+    # 获取指数列表信息（接口返回8000多个，用不了这么多，暂时先通过列表维护需要用到的指数）
+    df_index = pd.read_excel('./assets/tushare_index_basic.xlsx', dtype={'symbol': str})
+    # 获取ETF基金列表信息
+    df_fund = pro.fund_basic(market="E", status="L", fields=[
+        "ts_code", "name", "management", "custodian", "fund_type", "list_date",
+        "issue_amount", "status", "market", "m_fee", "c_fee", "p_value"
+    ])
 
-    df = pd.concat([df_stock, df_index])
+    df = pd.concat([df_stock, df_fund, df_index])
+    df.reset_index()
 
-    # 动态计算exchange列
-    exchange_map = { 'SH': 'SSE', 'SZ': 'SZSE', 'BJ': 'BSE' }
-    new_cols = []
+    # 动态计算symbol,exchange列
+    new_symbol_cols = []
+    new_exchange_cols = []
     for index, row in df.iterrows():
+        symbol = row['ts_code'].split('.')[0]
         exchange = row['ts_code'].split('.')[1]
         if exchange_map.get(exchange) is not None:
             exchange = exchange_map[exchange]
-        new_cols.append(exchange)
-    df['exchange'] = new_cols
+        new_symbol_cols.append(symbol)
+        new_exchange_cols.append(exchange)
+    df['symbol'] = new_symbol_cols
+    df['exchange'] = new_exchange_cols
 
-    # 过滤掉退市股 和 ST
-    df = df[df['list_status'] == 'L']
-    df = df[~df['name'].str.contains('ST')]
 
     # 类型: ts_code, trade_date, open, close, pe
     return df
@@ -172,6 +188,7 @@ def plotStock(title, df):
 exchange_map = {'SH': 'SSE', 'SZ': 'SZSE', 'BJ': 'BSE'}
 
 def get_exchange(code: str) -> str | None:
+    """code是ts_code或者symbol"""
     exchange = ''
     if code.find(".") != -1: exchange = code.split('.')[1]
     elif re.search('^[1|0|3]', code): exchange = "SZ"
@@ -179,6 +196,12 @@ def get_exchange(code: str) -> str | None:
     elif re.search('^[4|8]', code): exchange = "BJ"
     # 基金 or 指数
     return exchange_map.get(exchange)
+
+def get_vn_code(ts_code) -> str:
+    symbol = ts_code.split('.')[0]
+    exchange = get_exchange(ts_code)
+    # 如果已经下载过了，则直接跳过
+    return f"{symbol}.{exchange}"
 
 # 获取最新的行情数据
 def get_latest_bar_data(row):
