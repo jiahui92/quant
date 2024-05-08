@@ -1,7 +1,14 @@
+import os
+d = os.path.dirname(__file__)  # 获取当前路径
+parent_path = os.path.dirname(d)  # 获取上一级路径
+os.sys.path.append(parent_path)    # 如果要导入到包在上一级
+
 import time
 from datetime import datetime
-
 import pandas
+
+import utils.index as utils
+import tushare as ts
 
 # 预测分红率 = 预测分红 / 当日股价
 # 预测分红 = （1 + 预测利润率）* 上期分红  （这里假设股利率稳定）
@@ -15,17 +22,10 @@ import pandas
 
 
 # todo: 获取的数据貌似有问题（分红年度、分红率的计算）
-
-
-from utils.index import getStockDataFrame, get_latest_bar_data
-import utils.index as utils
-import tushare as ts
-
-
 pro = ts.pro_api()
 def dividendStart():
 
-    stock_data_frame = getStockDataFrame()
+    stock_data_frame = utils.getStockDataFrame()
     df = pandas.DataFrame(columns=stock_data_frame.columns)
 
     count = 0
@@ -108,3 +108,6 @@ def getDividend(row: pandas.DataFrame, bar_data):
     # todo: 有高送转的情况下，偏差率会很大
     cash_div_tax_percent = round(cash_div_tax / bar_data.close_price, 4)
     return cash_div_tax_percent, div_rows.iloc[0]['end_date']
+
+if __name__ == "__main__":
+    utils.calculate_function_runtime(dividendStart)

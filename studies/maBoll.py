@@ -18,7 +18,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from prettytable import PrettyTable
 import utils.index as utils
-from utils.index import getStockDataFrame
 
 
 # todo: 增加指数和基金数据收集
@@ -31,13 +30,12 @@ def maBollStart():
         symbol = row['ts_code'].split('.')[0]
         exchange = utils.get_exchange(row['ts_code'])
 
-        nowPrice, ma5Percent, ma10Percent, ma20Percent, ma30Percent, ma60Percent, bollHighPercent, bollLowPercent = maBoll(
+        nowPrice, ma5Percent, ma10Percent, ma20Percent, ma60Percent, bollHighPercent, bollLowPercent = maBoll(
             row['name'], symbol, exchange)
         row['nowPrice'] = nowPrice
         row['ma5 %'] = ma5Percent
         row['ma10 %'] = ma10Percent
         row['ma20 %'] = ma20Percent
-        row['ma30 %'] = ma30Percent
         row['ma60 %'] = ma60Percent
         row['boll'] = pd.NaT
         row['High %'] = bollHighPercent
@@ -46,7 +44,7 @@ def maBollStart():
         df = pandas.concat([df, row.to_frame().T], axis=0, ignore_index=True)
 
     style_df = df.style.apply(add_df_style, axis=1, subset=[
-        'name', 'ma5 %', 'ma10 %', 'ma20 %', 'ma30 %', 'ma60 %', 'High %', 'Low %'
+        'name', 'ma5 %', 'ma10 %', 'ma20 %', 'ma60 %', 'High %', 'Low %'
     ])
 
     # current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -61,14 +59,16 @@ def add_df_style(row: pandas.Series):
     for key, value in row.items():
         if isinstance(value, str):
             result.append('')
-        elif re.search('High', key) and value < 3:
-            result.append(lightred)
+        elif re.search('High', key):
+            if value < 3: result.append(lightred)
+            elif value > 10: result.append(lightgreen)
+            else: result.append('')
         elif re.search('Low', key) and value > -3:
             result.append(lightgreen)
         else:
-            if -3 < value < 0:
+            if -3 < value < 0 or value > 8:
                 result.append(lightgreen)
-            elif 0 < value < 3:
+            elif 0 < value < 5:
                 result.append(lightred)
             elif value == 0:
                 result.append('background-color: lightyellow;')
@@ -83,7 +83,7 @@ def add_df_style(row: pandas.Series):
 
 
 def maBoll(name, symbol, exchange):
-    emptyResult = pd.NaT, pd.NaT, pd.NaT, pd.NaT, pd.NaT, pd.NaT, pd.NaT, pd.NaT
+    emptyResult = pd.NaT, pd.NaT, pd.NaT, pd.NaT, pd.NaT, pd.NaT, pd.NaT
     if exchange == None: return emptyResult
 
     nowDate = datetime.now()
@@ -105,7 +105,6 @@ def maBoll(name, symbol, exchange):
     ma5 = utils.get_ma_price(df['close_price'], 5)
     ma10 = utils.get_ma_price(df['close_price'], 10)
     ma20 = utils.get_ma_price(df['close_price'], 20)
-    ma30 = utils.get_ma_price(df['close_price'], 30)
     ma60 = utils.get_ma_price(df['close_price'], 60)
     ma5weekly = utils.get_ma_price(df['close_price'], 5 * 5)
     ma10weekly = utils.get_ma_price(df['close_price'], 10 * 5)
@@ -121,7 +120,6 @@ def maBoll(name, symbol, exchange):
     ma5Percent = utils.get_percent(nowPrice, ma5)
     ma10Percent = utils.get_percent(nowPrice, ma10)
     ma20Percent = utils.get_percent(nowPrice, ma20)
-    ma30Percent = utils.get_percent(nowPrice, ma30)
     ma60Percent = utils.get_percent(nowPrice, ma60)
     bollHighPercent = utils.get_percent(nowPrice, bollHigh)
     bollLowPercent = utils.get_percent(nowPrice, bollLow)
@@ -132,7 +130,7 @@ def maBoll(name, symbol, exchange):
     #     ma5Percent, ma10Percent, ma20Percent, ma30Percent, ma60Percent,
     #     bollHighPercent, bollLowPercent
     # ])
-    return nowPrice, ma5Percent, ma10Percent, ma20Percent, ma30Percent, ma60Percent, bollHighPercent, bollLowPercent
+    return nowPrice, ma5Percent, ma10Percent, ma20Percent, ma60Percent, bollHighPercent, bollLowPercent
 
     # 输出结果
     #   标记某个股票的长时间段的结果
@@ -159,3 +157,6 @@ def maBoll(name, symbol, exchange):
     #     plt.close()
 
     # plt.show()
+
+if __name__ == "__main__":
+    utils.calculate_function_runtime(maBollStart)
