@@ -176,5 +176,4 @@ chatGPT预测行业热度，分数/系数
 * D:\veighna_studio\Lib\site-packages\vnpy_tushare\tushare_datafeed.py
   * EXCHANGE_VT2TS
   * to_ts_asset
-* D:\veighna_studio\Lib\site-packages\vnpy\trader\constant.py
-  * Exchange
+
