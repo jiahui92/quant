@@ -66,7 +66,7 @@ def getDataFrame(history_data):
     # df['date'] = df['datetime']
     return df
 
-def getStockDataFrame():
+def getStockDataFrame(only_stock = False):
     pro = ts.pro_api()
 
     # df1 = pd.read_csv('./assets/tushare_stock_basic.csv', dtype={'symbol': str})
@@ -101,16 +101,20 @@ def getStockDataFrame():
         if column.find("_delete") != -1:
             df_stock.drop(column, axis=1, inplace=True)
 
-    # 获取指数列表信息（接口返回8000多个，用不了这么多，暂时先通过列表维护需要用到的指数）
-    df_index = pd.read_excel('./assets/tushare_index_basic.xlsx', dtype={'symbol': str})
-    # 获取ETF基金列表信息
-    df_fund = pro.fund_basic(market="E", status="L", fields=[
-        "ts_code", "name", "management", "custodian", "fund_type", "list_date",
-        "issue_amount", "status", "market", "m_fee", "c_fee", "p_value"
-    ])
+    if not only_stock:
+        # 获取指数列表信息（接口返回8000多个，用不了这么多，暂时先通过列表维护需要用到的指数）
+        df_index = pd.read_excel('./assets/tushare_index_basic.xlsx', dtype={'symbol': str})
+        # 获取ETF基金列表信息
+        df_fund = pro.fund_basic(market="E", status="L", fields=[
+            "ts_code", "name", "management", "custodian", "fund_type", "list_date",
+            "issue_amount", "status", "market", "m_fee", "c_fee", "p_value"
+        ])
 
-    df = pd.concat([df_stock, df_fund, df_index])
-    df.reset_index()
+        df = pd.concat([df_stock, df_fund, df_index])
+        df.reset_index()
+    else:
+        df = df_stock
+
 
     # 动态计算symbol,exchange列
     new_symbol_cols = []
@@ -243,3 +247,25 @@ def safe_division(a, b):
 def get_datetime(time_str: str, time_format = '%Y%m%d'):
     # 根据时间字符串和格式初始化 datetime 对象
     return datetime.strptime(time_str, time_format)
+
+# 获取股票的分红
+def get_dividend(ts_code: str, year = "") -> float:
+    df = pandas.read_excel("./assets/temp_dividendData.xlsx", dtype={ "end_date": str })
+    df = df[df["ts_code"] == ts_code]
+    if year == "":
+        year = datetime.now().year
+    df = df[df["end_date"].str.contains(f"{year-1}|{year}")]
+    df = df.sort_values(by="end_date", ascending = False)
+
+    # 计算TTM的分红
+    date_flag = {}
+    new_df = pandas.DataFrame()
+    for index, item in df.iterrows():
+        date = item["end_date"][4:]
+        if date_flag.get(date) is None:
+            new_df = new_df.append(item)
+            date_flag[date] = True
+
+    if len(new_df) == 0:
+        return 0
+    return new_df["cash_div_tax"].count()
