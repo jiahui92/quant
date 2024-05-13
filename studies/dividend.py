@@ -113,10 +113,10 @@ def getDividend(row: pandas.DataFrame, bar_data):
 
 # 下载近三年的分红数据
 def downloadDividendData():
-    file_path = "assets/temp_dividendData.xlsx"
+    file_path = "assets/temp_dividendData.csv"
     cols = {"ts_code": str, "end_date": str}
     try:
-        dividend_df = pandas.read_excel(file_path, dtype=cols)
+        dividend_df = pandas.read_csv(file_path, dtype=cols)
     except:
         dividend_df = pandas.DataFrame(columns=cols.keys())
     stock_data_frame = utils.getStockDataFrame(True)
@@ -124,7 +124,7 @@ def downloadDividendData():
     start_date = "20210101"
     end_date = "202301231"
     for index, row in stock_data_frame.iterrows():
-        if count > 1000: break
+        # if count > 2000: break
         count += 1
         print(f"{count}/{len(stock_data_frame)}")
 
@@ -172,7 +172,7 @@ def downloadDividendData():
         else:
             dividend_df = df_filter
 
-        dividend_df.to_excel(file_path)
+        dividend_df.to_csv(file_path)
 
 
 if __name__ == "__main__":
