@@ -40,25 +40,25 @@ def dividendStart():
         if peg is None or peg > 1 or peg < 0:
             continue
 
-        # todo 盈利是否稳定
+        # todo 扣非利润是否稳定
         # todo 分红是否稳定
+        # todo 排除掉 营收增长率 / 利润率 > 50的 （这种通常是某个季度业绩不好造成的）
 
         # todo 地产链置灰
-        # todo 今天更新的标红
 
 
         bar_data = utils.get_latest_bar_data(row)
         # div, end_date = getDividend(row, bar_data)  # 实时调接口获取分红数据
         div_pct, end_date = utils.get_dividend_pct(row['ts_code'], bar_data.close_price)  # 通过本地文件获取分红数据
-        div_dyn_pct = round((1 + row['profit_yoy'] / 100) * div_pct, 2)
+        div_dyn_pct = (1 + row['profit_yoy'] / 100) * div_pct
 
-        if div_pct > 0.05 or div_dyn_pct > 0.05:
+        if div_pct > 0.02 and div_dyn_pct > 0.05 and row["total_mv"] >= 100:
             print(f"{row['ts_code']}.{row['name']}: {round(div_pct*100,2)}% {end_date}   进度:{count}/{len(stock_data_frame)}")
             new_row = pandas.Series(row, index=stock_data_frame.columns)
             new_row["end_date"] = end_date
 
             new_row["div"] = div_pct * 100
-            new_row['div.dyn'] = div_dyn_pct * 100
+            new_row['div.dyn'] = round(div_dyn_pct * 100, 1)
 
             new_row["profit_yoy"] = round(new_row['profit_yoy'], 0)
             new_row["peg"] = round(peg, 1)
