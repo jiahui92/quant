@@ -25,7 +25,7 @@ import tushare as ts
 pro = ts.pro_api()
 def dividendStart():
 
-    stock_data_frame = utils.getStockDataFrame()
+    stock_data_frame = utils.getStockDataFrame(True)
     df = pandas.DataFrame(columns=stock_data_frame.columns)
 
     count = 0
@@ -48,12 +48,18 @@ def dividendStart():
 
 
         bar_data = utils.get_latest_bar_data(row)
-        div, end_date = getDividend(row, bar_data)
-        if div > 0.05:
-            print(f"{row['ts_code']}.{row['name']}: {round(div*100,2)}% {end_date}   进度:{count}/{len(stock_data_frame)}")
+        # div, end_date = getDividend(row, bar_data)  # 实时调接口获取分红数据
+        div_pct, end_date = utils.get_dividend_pct(row['ts_code'], bar_data.close_price)  # 通过本地文件获取分红数据
+        div_dyn_pct = round((1 + row['profit_yoy'] / 100) * div_pct, 2)
+
+        if div_pct > 0.05 or div_dyn_pct > 0.05:
+            print(f"{row['ts_code']}.{row['name']}: {round(div_pct*100,2)}% {end_date}   进度:{count}/{len(stock_data_frame)}")
             new_row = pandas.Series(row, index=stock_data_frame.columns)
             new_row["end_date"] = end_date
-            new_row["dividend"] = round(div*100,1)
+
+            new_row["div"] = div_pct * 100
+            new_row['div.dyn'] = div_dyn_pct * 100
+
             new_row["profit_yoy"] = round(new_row['profit_yoy'], 0)
             new_row["peg"] = round(peg, 1)
             new_row["total_mv"] = int(bar_data.close_price * new_row['total_share'])  # 总市值
@@ -61,10 +67,10 @@ def dividendStart():
             df = pandas.concat([df, new_row.to_frame().T], axis=0, ignore_index=True)
 
     # 行排序
-    df = df.sort_values(by=['end_date', 'dividend'], ascending=False)
+    df = df.sort_values(by=['end_date', 'div.dyn'], ascending=False)
     # 栏目排序
     cols = [
-        'end_date', 'dividend', 'peg', 'float_mv', 'total_mv',
+        'end_date', 'div', 'div.dyn', 'peg', 'float_mv', 'total_mv',
         'symbol', 'name', 'pe', 'pb', 'profit_yoy', 'rev_yoy', 'holder_num'
     ]
     new_order = cols + [col for col in df if col not in cols]

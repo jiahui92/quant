@@ -249,7 +249,7 @@ def get_datetime(time_str: str, time_format = '%Y%m%d'):
     return datetime.strptime(time_str, time_format)
 
 # 获取股票的分红
-def get_dividend(ts_code: str, ttm = True) -> float:
+def get_dividend_pct(ts_code: str, nowPrice: float, ttm = True) -> tuple[float, str]:
     df = pandas.read_csv("./assets/temp_dividendData.csv", dtype={ "end_date": str })
     df = df[df["ts_code"] == ts_code]
     year = datetime.now().year
@@ -273,5 +273,7 @@ def get_dividend(ts_code: str, ttm = True) -> float:
         new_df = df
 
     if len(new_df) == 0:
-        return 0
-    return new_df["cash_div_tax"].sum()
+        return 0, ''
+    div_pct = round(new_df["cash_div_tax"].sum() / nowPrice, 2)
+    end_date = new_df.iloc[0]["end_date"]
+    return div_pct, end_date

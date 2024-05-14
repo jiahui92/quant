@@ -24,18 +24,42 @@ import utils.index as utils
 def maBollStart():
     zx_df = pd.read_excel('./assets/zixuan.xlsx', dtype={'ts_code': str})
     df = pandas.DataFrame(columns=zx_df.columns)
+    df_stock = utils.getStockDataFrame(True)
 
     for index, row in zx_df.iterrows():
         if pd.isna(row['ts_code']): continue
         symbol = row['ts_code'].split('.')[0]
         exchange = utils.get_exchange(row['ts_code'])
+        df_stock_filter = df_stock[df_stock["ts_code"] == row["ts_code"]]
 
         nowPrice, ma5Percent, ma10Percent, ma20Percent, ma60Percent, bollHighPercent, bollLowPercent = maBoll(
             row['name'], symbol, exchange)
         row['nowPrice'] = nowPrice
-        if nowPrice is not pandas.NaT:
-            dividend = utils.get_dividend(row["ts_code"])
-            row['dividend %'] = round(dividend / nowPrice * 100, 2)
+
+        stock_row = None
+        if len(df_stock_filter) > 0:
+            stock_row = df_stock_filter.iloc[0]
+
+
+        if stock_row is not None:
+            # 计算股息率
+            dividend_pct = utils.get_dividend_pct(row["ts_code"], nowPrice) * 100
+            row['div %'] = dividend_pct
+
+            profit_yoy = stock_row['profit_yoy'] / 100
+            row['div(动) %'] = round((1 + profit_yoy) * dividend_pct, 2)
+
+            # 计算peg
+            peg = utils.safe_division(stock_row['pe'], stock_row['profit_yoy'])
+            row['peg'] = round(peg, 1)
+            row['profit %'] = stock_row['profit_yoy']
+        else:
+            row['div %'] = ''
+            row['div(动) %'] = ''
+            row['peg'] = ''
+            row['profit %'] = ''
+
+
         row['ma5 %'] = ma5Percent
         row['ma10 %'] = ma10Percent
         row['ma20 %'] = ma20Percent
@@ -47,7 +71,7 @@ def maBollStart():
         df = pandas.concat([df, row.to_frame().T], axis=0, ignore_index=True)
 
     style_df = df.style.apply(add_df_style, axis=1, subset=[
-        'name', 'dividend %', 'ma5 %', 'ma10 %', 'ma20 %', 'ma60 %', 'High %', 'Low %'
+        'name', 'div(动) %', 'peg', 'ma5 %', 'ma10 %', 'ma20 %', 'ma60 %', 'High %', 'Low %'
     ])
 
     # current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -61,7 +85,7 @@ def add_df_style(row: pandas.Series):
     result = []
     for key, value in row.items():
         # 字符串不需要染色，只处理数值
-        if isinstance(value, str):
+        if isinstance(value, str) or pandas.isna(value):
             result.append('')
         elif re.search('High', key):
             if value < 3: result.append(lightred)
@@ -69,8 +93,12 @@ def add_df_style(row: pandas.Series):
             else: result.append('')
         elif re.search('Low', key) and value > -3:
             result.append(lightgreen)
-        elif re.search('dividend', key):
+        elif re.search('div', key):
             if value >= 5:
+                result.append(lightgreen)
+            else: result.append('')
+        elif re.search('peg', key):
+            if 0 <= value <= 0.8:
                 result.append(lightgreen)
             else: result.append('')
         else:
