@@ -249,23 +249,29 @@ def get_datetime(time_str: str, time_format = '%Y%m%d'):
     return datetime.strptime(time_str, time_format)
 
 # 获取股票的分红
-def get_dividend(ts_code: str, year = "") -> float:
-    df = pandas.read_excel("./assets/temp_dividendData.xlsx", dtype={ "end_date": str })
+def get_dividend(ts_code: str, ttm = True) -> float:
+    df = pandas.read_csv("./assets/temp_dividendData.csv", dtype={ "end_date": str })
     df = df[df["ts_code"] == ts_code]
-    if year == "":
-        year = datetime.now().year
-    df = df[df["end_date"].str.contains(f"{year-1}|{year}")]
+    year = datetime.now().year
+    # df = df[df["end_date"].str.contains(f"{year-1}|{year}")]
+    if ttm:
+        df = df[df["end_date"].str.startswith(str(year-1), str(year))]
+    else:
+        df = df[df["end_date"].str.startswith(str(year))]
     df = df.sort_values(by="end_date", ascending = False)
 
     # 计算TTM的分红
-    date_flag = {}
-    new_df = pandas.DataFrame()
-    for index, item in df.iterrows():
-        date = item["end_date"][4:]
-        if date_flag.get(date) is None:
-            new_df = new_df.append(item)
-            date_flag[date] = True
+    if ttm:
+        date_flag = {}
+        new_df = pandas.DataFrame()
+        for index, item in df.iterrows():
+            date = item["end_date"][4:]
+            if date_flag.get(date) is None:
+                new_df = new_df._append(item)
+                date_flag[date] = True
+    else:
+        new_df = df
 
     if len(new_df) == 0:
         return 0
-    return new_df["cash_div_tax"].count()
+    return new_df["cash_div_tax"].sum()

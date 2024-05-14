@@ -1,3 +1,4 @@
+import os
 import re
 
 import numpy
@@ -20,7 +21,6 @@ from prettytable import PrettyTable
 import utils.index as utils
 
 
-# todo: 增加指数和基金数据收集
 def maBollStart():
     zx_df = pd.read_excel('./assets/zixuan.xlsx', dtype={'ts_code': str})
     df = pandas.DataFrame(columns=zx_df.columns)
@@ -33,6 +33,9 @@ def maBollStart():
         nowPrice, ma5Percent, ma10Percent, ma20Percent, ma60Percent, bollHighPercent, bollLowPercent = maBoll(
             row['name'], symbol, exchange)
         row['nowPrice'] = nowPrice
+        if nowPrice is not pandas.NaT:
+            dividend = utils.get_dividend(row["ts_code"])
+            row['dividend %'] = round(dividend / nowPrice * 100, 2)
         row['ma5 %'] = ma5Percent
         row['ma10 %'] = ma10Percent
         row['ma20 %'] = ma20Percent
@@ -44,7 +47,7 @@ def maBollStart():
         df = pandas.concat([df, row.to_frame().T], axis=0, ignore_index=True)
 
     style_df = df.style.apply(add_df_style, axis=1, subset=[
-        'name', 'ma5 %', 'ma10 %', 'ma20 %', 'ma60 %', 'High %', 'Low %'
+        'name', 'dividend %', 'ma5 %', 'ma10 %', 'ma20 %', 'ma60 %', 'High %', 'Low %'
     ])
 
     # current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -57,6 +60,7 @@ def add_df_style(row: pandas.Series):
 
     result = []
     for key, value in row.items():
+        # 字符串不需要染色，只处理数值
         if isinstance(value, str):
             result.append('')
         elif re.search('High', key):
@@ -65,6 +69,10 @@ def add_df_style(row: pandas.Series):
             else: result.append('')
         elif re.search('Low', key) and value > -3:
             result.append(lightgreen)
+        elif re.search('dividend', key):
+            if value >= 5:
+                result.append(lightgreen)
+            else: result.append('')
         else:
             if -3 < value < 0 or value > 8:
                 result.append(lightgreen)
@@ -87,6 +95,8 @@ def maBoll(name, symbol, exchange):
     if exchange == None: return emptyResult
 
     nowDate = datetime.now()
+    if nowDate.hour < 15:
+        nowDate -= timedelta(days=1)
     start = nowDate - timedelta(100)
     history_data: List[BarData] = load_bar_data(
         symbol=symbol,
