@@ -12,10 +12,10 @@ from datetime import datetime
 #
 
 # 计算zixuan相关
-# utils.calculate_function_runtime(maBollStart)
+utils.calculate_function_runtime(maBollStart)
 
 # 计算股息率相关
-utils.calculate_function_runtime(dividendStart)
+# utils.calculate_function_runtime(dividendStart)
 
 def test_all():
     pro = ts.pro_api()

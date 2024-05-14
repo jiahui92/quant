@@ -274,6 +274,6 @@ def get_dividend_pct(ts_code: str, nowPrice: float, ttm = True) -> tuple[float, 
 
     if len(new_df) == 0:
         return 0, ''
-    div_pct = round(new_df["cash_div_tax"].sum() / nowPrice, 2)
+    div_pct = round(new_df["cash_div_tax"].sum() / nowPrice, 3)
     end_date = new_df.iloc[0]["end_date"]
     return div_pct, end_date

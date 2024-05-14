@@ -43,11 +43,11 @@ def maBollStart():
 
         if stock_row is not None:
             # 计算股息率
-            dividend_pct = utils.get_dividend_pct(row["ts_code"], nowPrice) * 100
-            row['div %'] = dividend_pct
+            dividend_pct, end_date = utils.get_dividend_pct(row["ts_code"], nowPrice)
+            row['div %'] = dividend_pct * 100
 
             profit_yoy = stock_row['profit_yoy'] / 100
-            row['div(动) %'] = round((1 + profit_yoy) * dividend_pct, 2)
+            row['div.dyn %'] = round((1 + profit_yoy) * dividend_pct * 100, 2)  # 动态股息率
 
             # 计算peg
             peg = utils.safe_division(stock_row['pe'], stock_row['profit_yoy'])
@@ -55,7 +55,7 @@ def maBollStart():
             row['profit %'] = stock_row['profit_yoy']
         else:
             row['div %'] = ''
-            row['div(动) %'] = ''
+            row['div.dyn %'] = ''
             row['peg'] = ''
             row['profit %'] = ''
 
@@ -71,7 +71,7 @@ def maBollStart():
         df = pandas.concat([df, row.to_frame().T], axis=0, ignore_index=True)
 
     style_df = df.style.apply(add_df_style, axis=1, subset=[
-        'name', 'div(动) %', 'peg', 'ma5 %', 'ma10 %', 'ma20 %', 'ma60 %', 'High %', 'Low %'
+        'name', 'div.dyn %', 'peg', 'ma5 %', 'ma10 %', 'ma20 %', 'ma60 %', 'High %', 'Low %'
     ])
 
     # current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
