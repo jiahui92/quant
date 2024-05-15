@@ -1,5 +1,6 @@
 import os
 import re
+import statistics
 
 import numpy
 import pandas
@@ -71,7 +72,7 @@ def maBollStart():
         df = pandas.concat([df, row.to_frame().T], axis=0, ignore_index=True)
 
     style_df = df.style.apply(add_df_style, axis=1, subset=[
-        'name', 'div.dyn %', 'peg', 'ma5 %', 'ma10 %', 'ma20 %', 'ma60 %', 'High %', 'Low %'
+        'ts_code', 'name', 'div.dyn %', 'peg', 'ma5 %', 'ma10 %', 'ma20 %', 'ma60 %', 'High %', 'Low %'
     ])
 
     # current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -79,8 +80,11 @@ def maBollStart():
 
 
 def add_df_style(row: pandas.Series):
+    # darkgreen = 'background-color: mediumseagreen;'
+    # darkred = 'background-color: salmon;'
     lightgreen = 'background-color: lightgreen;'
     lightred = 'background-color: lightpink;'
+    lightyellow = 'background-color: lightyellow;'
 
     result = []
     for key, value in row.items():
@@ -107,13 +111,22 @@ def add_df_style(row: pandas.Series):
             elif 0 < value < 5:
                 result.append(lightred)
             elif value == 0:
-                result.append('background-color: lightyellow;')
+                result.append(lightyellow)
             else:
                 result.append('')
 
     # name处重点标注颜色
-    if result.count(lightgreen) >= 4: result[0] = lightgreen
-    if result.count(lightred) >= 4: result[0] = lightred
+    if result.count(lightgreen) >= 5: result[1] = lightgreen
+    if result.count(lightred) >= 4: result[1] = lightred
+
+    # 上涨 或 下跌趋势
+    if isinstance(row['ma5 %'], (int, float)):
+        if 0 >= row['ma5 %'] >= row['ma10 %'] >= row['ma20 %']:
+            result[0] = lightgreen
+        elif 0 <= row['ma5 %'] <= row['ma10 %'] <= row['ma20 %']:
+            result[0] = lightred
+        elif statistics.stdev([row['ma5 %'], row['ma10 %'], row['ma20 %']]) <= 0.5:
+            result[0] = lightyellow
 
     return result
 
