@@ -39,7 +39,8 @@ def download():
         # 如果已经下载过了，则直接跳过
         key = utils.get_vn_code(row['ts_code'])
         # 是否为指数: 指数的更新形式暂时为重新下载
-        is_index = to_ts_asset(row['symbol'], Exchange[utils.get_exchange(row['ts_code'])]) == "I"
+        symbol = row['ts_code'].split('.')[0]
+        is_index = to_ts_asset(symbol, Exchange[utils.get_exchange(row['ts_code'])]) == "I"
         if not is_index and existMap.get(key):
             continue
 
