@@ -110,11 +110,9 @@ def getStockDataFrame(only_stock = False):
             "issue_amount", "status", "market", "m_fee", "c_fee", "p_value"
         ])
 
-        df = pd.concat([df_stock, df_fund, df_index])
-        df.reset_index()
+        df = pd.concat([df_stock, df_fund, df_index], ignore_index=True)
     else:
         df = df_stock
-
 
     # 动态计算symbol,exchange列
     new_symbol_cols = []
