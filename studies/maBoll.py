@@ -69,6 +69,11 @@ def maBollStart():
         row['High %'] = bollHighPercent
         row['Low %'] = bollLowPercent
 
+
+        arr = row['ts_code'].split('.')
+        if len(arr) == 2:
+            row['link'] = f"https://quote.eastmoney.com/{arr[1]}{arr[0]}.html"
+
         df = pandas.concat([df, row.to_frame().T], axis=0, ignore_index=True)
 
     style_df = df.style.apply(add_df_style, axis=1, subset=[
