@@ -20,12 +20,16 @@ import utils.index as utils
 mainEngine = MainEngine()
 dataManagerEngine = ManagerEngine(mainEngine, None)
 
-def download():
+def download(redownload = True):
     overviews = dataManagerEngine.get_bar_overview()
     existMap = {}
+
     for overview in overviews:
         key = f"{overview.symbol}.{overview.exchange.value}"
-        existMap[key] = True
+        if redownload:
+            existMap[key] = overview
+        else:
+            existMap[key] = True
 
     df = utils.getStockDataFrame()
     count = 0
@@ -41,8 +45,11 @@ def download():
         # 是否为指数: 指数的更新形式暂时为重新下载
         symbol = row['ts_code'].split('.')[0]
         is_index = to_ts_asset(symbol, Exchange[utils.get_exchange(row['ts_code'])]) == "I"
-        if not is_index and existMap.get(key):
+        if not is_index and existMap.get(key) is True:
             continue
+        # 先删除再重新下载
+        if redownload:
+            delete_one(existMap.get(key))
 
         try:
             bardataCount = dataManagerEngine.download_bar_data(
@@ -82,7 +89,7 @@ def update():
     #     update_one(overview, tradeDate)
 
     # 每次更新时，根据最新的./assets/*.csv下载新股
-    download()
+    download(False)
 
     # max_parallel = 2
     # # lastStartTime = time.time_ns()
@@ -190,7 +197,7 @@ def update_one(overview, tradeDate: str):
 def delete_one(overview):
     dataManagerEngine.delete_bar_data(
         symbol=overview.symbol,
-        exchange=Exchange[overview.exchange],
+        exchange=overview.exchange,
         interval=Interval.DAILY,
     )
     print('deleted')
