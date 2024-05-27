@@ -1,3 +1,4 @@
+import os
 import re
 
 import numpy
@@ -18,6 +19,7 @@ from typing import Callable, List, Dict, Optional, Type
 from datetime import datetime, timedelta
 import time
 import tushare as ts
+import numpy as np
 
 
 # 支持中文
@@ -66,6 +68,27 @@ def getDataFrame(history_data):
     # df['date'] = df['datetime']
     return df
 
+def get_bar_data(ts_code: str, days: int):
+    """获取bardata"""
+    symbol = ts_code.split('.')[0]
+    exchange = get_exchange(ts_code)
+    # 暂不支持该类型的数据，比如xxx.HK
+    if exchange == None:
+        return []
+
+    nowDate = datetime.now()
+    if nowDate.hour < 15:
+        nowDate -= timedelta(days=1)
+    start = nowDate - timedelta(days)
+    history_data: List[BarData] = load_bar_data(
+        symbol=symbol,
+        exchange=Exchange[exchange],
+        start=start,
+        end=nowDate,
+        interval=Interval.DAILY,
+    )
+    return history_data
+
 def getStockDataFrame(only_stock = False):
     pro = ts.pro_api()
 
@@ -77,16 +100,26 @@ def getStockDataFrame(only_stock = False):
 
     # 此接口每天只能访问20次，报错时改为读取本地文件
     try:
-        df2 = pro.bak_basic(limit=len(df1), fields=[
-        "trade_date", "ts_code", "name", "industry", "area", "pe", "float_share", "total_share",
-        "total_assets", "liquid_assets", "fixed_assets", "reserved", "reserved_pershare", "eps",
-        "bvps", "pb", "list_date", "undp", "per_undp", "rev_yoy", "profit_yoy", "gpr", "npr",
-        "holder_num"
-        ])
-        df2.to_csv('./assets/temp_tushare_bak_basic.csv', index=False, encoding='GBK')
+        basic_file = './assets/temp_tushare_bak_basic.csv'
+        mod_time = get_file_modification_time(basic_file)
+        now = datetime.now()
+        today_midnight = datetime(now.year, now.month, now.day)
+        # 获取昨天的最后一秒时间
+        yesterday_last_second = today_midnight - timedelta(seconds=1)
+        if mod_time > yesterday_last_second:
+            # 如果今天更新过了，则直接从本地文件获取
+            # todo: 会存在15:00后数据未更新的问题
+            df2 = pd.read_csv(basic_file, dtype={'symbol': str}, encoding='GBK')
+        else:
+            df2 = pro.bak_basic(limit=len(df1), fields=[
+                "ts_code", "trade_date", "ts_code", "name", "industry", "area", "pe", "float_share", "total_share",
+                "total_assets", "liquid_assets", "fixed_assets", "reserved", "reserved_pershare", "eps",
+                "bvps", "pb", "list_date", "undp", "per_undp", "rev_yoy", "profit_yoy", "gpr", "npr",
+                "holder_num"
+            ])
+            df2.to_csv(basic_file, index=False, encoding='GBK')
     except Exception as e:
-        print('bak_basic接口请求出错了，切换为读取本地文件：', e)
-        df2 = pd.read_csv('./assets/temp_tushare_bak_basic.csv', dtype={'symbol': str}, encoding='GBK')
+        print('bak_basic接口请求出错了', e)
 
     df1 = df1.drop_duplicates(subset="ts_code")
     df2 = df2.drop_duplicates(subset="ts_code")
@@ -130,6 +163,32 @@ def getStockDataFrame(only_stock = False):
 
     # 类型: ts_code, trade_date, open, close, pe
     return df
+
+def calculate_kdj(data: pd.DataFrame, n=9, m1=3, m2=3):
+    """
+    计算KDJ指标
+    参数:
+    data (DataFrame): 包含'close'价格的DataFrame。
+    :param data: 包含股票价格的DataFrame，必须包含 'low', 'high', 'close' 列
+    :param n: N天周期，默认14
+    :param m1: K值的M天移动平均周期，默认3
+    :param m2: D值的M天移动平均周期，默认3
+    :return: 包含K, D, J列的DataFrame
+
+    返回:
+    DataFrame: 包含KDJ指标的DataFrame。
+    """
+    low_min = data['low'].rolling(window=n, min_periods=1).min()
+    high_max = data['high'].rolling(window=n, min_periods=1).max()
+
+    rsv = (data['close'] - low_min) / (high_max - low_min) * 100
+
+    data['K'] = rsv.ewm(alpha=1 / m1, adjust=False).mean()
+    data['D'] = data['K'].ewm(alpha=1 / m2, adjust=False).mean()
+    data['J'] = 3 * data['K'] - 2 * data['D']
+
+    return data
+
 
 def getStockPlot(df, dotArr, title, axtitle, savePath):
 
@@ -275,3 +334,17 @@ def get_dividend_pct(ts_code: str, nowPrice: float, ttm = True) -> tuple[float, 
     div_pct = round(new_df["cash_div_tax"].sum() / nowPrice, 3)
     end_date = new_df.iloc[0]["end_date"]
     return div_pct, end_date
+
+
+def get_file_modification_time(file_path):
+    try:
+        # 获取文件的修改时间
+        modification_time = os.path.getmtime(file_path)
+
+        # 将时间戳转换为 datetime 对象
+        modification_time_readable = datetime.fromtimestamp(modification_time)
+
+        return modification_time_readable
+    except FileNotFoundError:
+        print(f"File not found: {file_path}")
+        return None
