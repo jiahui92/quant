@@ -4,6 +4,7 @@ from studies.kdj_realtime import kdj_realtime_start
 from studies.kdj_daily import kdj_daily_start
 from studies.dividend import dividendStart
 from utils.index import getStockDataFrame
+from dataManager import update
 import utils.index as utils
 import tushare as ts
 from datetime import datetime
@@ -19,7 +20,7 @@ def main():
     # 添加一个命令行参数
     parser.add_argument(
         'function',
-        choices=['zixuan_start', 'kdj_daily_start', 'kdj_realtime_start', 'dividendStart'],
+        choices=['zixuan_start', 'kdj_daily_start', 'kdj_realtime_start', 'dividendStart', 'daily_task'],
         help="Choose a function to execute"
     )
     args = parser.parse_args()
@@ -30,6 +31,11 @@ def main():
         utils.calculate_function_runtime(kdj_daily_start)
     elif args.function == 'kdj_realtime_start':
         utils.calculate_function_runtime(kdj_realtime_start)
+    elif args.function == 'daily_task':
+        # win 每日自动执行任务
+        utils.calculate_function_runtime(update)  # 更新股票数据
+        utils.calculate_function_runtime(zixuan_start)  # 计算自选数据
+        utils.calculate_function_runtime(kdj_daily_start)  # 计算全市场kdj相关信息
     elif args.function == 'dividendStart':
         # 计算股息率相关(一般分红时才需要计算一次)
         utils.calculate_function_runtime(dividendStart)

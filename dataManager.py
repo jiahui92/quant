@@ -292,6 +292,8 @@ def get_item_by_index(arr, index):
     except IndexError:
         return None
 
-# delete()
-utils.calculate_function_runtime(update)
-# utils.calculate_function_runtime(download)
+
+if __name__ == "__main__":
+    # delete()
+    utils.calculate_function_runtime(update)
+    # utils.calculate_function_runtime(download)
