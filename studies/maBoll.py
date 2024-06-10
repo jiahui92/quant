@@ -1,41 +1,36 @@
-import os
+import math
 import re
 import statistics
 
-import numpy
 import pandas
-from vnpy_ctastrategy.backtesting import load_bar_data
 from datetime import datetime, timedelta
-from vnpy.trader.constant import (
-    Direction,
-    Offset,
-    Exchange,
-    Interval,
-    Status,
-)
-from typing import Callable, List, Dict, Optional, Type
-from vnpy.trader.object import OrderData, TradeData, BarData, TickData
-import pandas_ta as ta
-import pandas as pd
-import matplotlib.pyplot as plt
-from prettytable import PrettyTable
-import utils.index as utils
 
+import pandas as pd
+import utils.index as utils
+import talib
+from openpyxl import load_workbook
 
 def maBollStart():
     zx_df = pd.read_excel('./assets/zixuan.xlsx', dtype={'ts_code': str})
+
     df = pandas.DataFrame(columns=zx_df.columns)
     df_stock = utils.getStockDataFrame(True)
 
     for index, row in zx_df.iterrows():
+        # if index < 6000: continue
+
         if pd.isna(row['ts_code']): continue
         symbol = row['ts_code'].split('.')[0]
         exchange = utils.get_exchange(row['ts_code'])
         df_stock_filter = df_stock[df_stock["ts_code"] == row["ts_code"]]
 
+        if exchange == None: continue
+
         nowPrice, ma5Percent, ma10Percent, ma20Percent, ma60Percent, bollHighPercent, bollLowPercent = maBoll(
-            row['name'], symbol, exchange)
+            row['name'], row['ts_code'])
         row['nowPrice'] = nowPrice
+
+        print(f"{index}/{len(zx_df)}")
 
         stock_row = None
         if len(df_stock_filter) > 0:
@@ -60,6 +55,26 @@ def maBollStart():
             row['peg'] = ''
             row['profit %'] = ''
 
+        bar_datas = utils.get_bar_data(row['ts_code'], 100)
+        data_dicts = [{
+            'high': bar_data.high_price,
+            'low': bar_data.low_price,
+            'close': bar_data.close_price,
+        } for bar_data in bar_datas]
+        data = pd.DataFrame(data_dicts)
+
+        kdj = utils.calculate_kdj(data)
+        rsi = talib.RSI(data['close'], timeperiod=6)
+
+        row['K'] = round(kdj['K'].iloc[-1], 1)
+        row['D'] = round(kdj['D'].iloc[-1], 1)
+        row['J'] = round(kdj['J'].iloc[-1], 1)
+        row['RSI'] = round(rsi.iloc[-1], 1)
+
+        macd, macd_signal, macd_hist = talib.MACD(data['close'])
+
+
+
 
         row['ma5 %'] = ma5Percent
         row['ma10 %'] = ma10Percent
@@ -76,17 +91,46 @@ def maBollStart():
 
         df = pandas.concat([df, row.to_frame().T], axis=0, ignore_index=True)
 
+    # 把desc挪到最后一列
+    columns_to_move = ['desc', 'link']
+    new_columns = [col for col in df.columns if col not in columns_to_move] + columns_to_move
+    df = df.reindex(columns=new_columns)
+
     style_df = df.style.apply(add_df_style, axis=1, subset=[
-        'ts_code', 'name', 'div.dyn %', 'peg', 'ma5 %', 'ma10 %', 'ma20 %', 'ma60 %', 'High %', 'Low %'
+        'ts_code', 'name', 'div.dyn %', 'peg', 'K', 'D', 'J', 'RSI', 'ma5 %', 'ma10 %', 'ma20 %', 'ma60 %', 'High %', 'Low %'
     ])
 
-    # current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    style_df.to_excel(f"./assets/temp_zixuan.xlsx", engine='openpyxl', index=False)
 
+
+    # current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    excel_file = f"./assets/temp_zixuan.xlsx"
+    style_df.to_excel(excel_file, engine='openpyxl', index=False)
+
+    # 加载工作簿和工作表
+    wb = load_workbook(excel_file)
+    ws = wb.active
+    # 冻结第一行
+    ws.freeze_panes = 'A2'
+    # 启用筛选功能
+    ws.auto_filter.ref = ws.dimensions
+    # 自动调整列宽
+    for col in ws.columns:
+        min_length = 10
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > min_length:
+                    min_length = len(cell.value)
+            except:
+                pass
+        adjusted_width = min_length + 2
+        ws.column_dimensions[column].width = adjusted_width
+    # 保存工作簿
+    wb.save(excel_file)
 
 def add_df_style(row: pandas.Series):
-    # darkgreen = 'background-color: mediumseagreen;'
-    # darkred = 'background-color: salmon;'
+    darkgreen = 'background-color: mediumseagreen;'
+    darkred = 'background-color: salmon;'
     lightgreen = 'background-color: lightgreen;'
     lightred = 'background-color: lightpink;'
     lightyellow = 'background-color: lightyellow;'
@@ -94,13 +138,29 @@ def add_df_style(row: pandas.Series):
     result = []
     for key, value in row.items():
         # 字符串不需要染色，只处理数值
-        if isinstance(value, str) or pandas.isna(value):
+        if isinstance(value, str) or pandas.isna(value) or key in ["K", "D"]:
             result.append('')
-        elif re.search('High', key):
-            if value < 3: result.append(lightred)
-            elif value > 10: result.append(lightgreen)
+        elif key == "J":
+            if value < 20:
+                if math.isclose(row['K'], row['D'], abs_tol=10) or row['K'] > row['D']:
+                    result.append(darkgreen)
+                else:
+                    result.append(lightgreen)
+            elif value > 80:
+                if math.isclose(row['K'], row['D'], abs_tol=10) or row['K'] < row['D']:
+                    result.append(darkred)
+                else:
+                    result.append(lightred)
             else: result.append('')
-        elif re.search('Low', key) and value > -3:
+        elif key == "RSI":
+            # 大于80超买，小于20超卖
+            if value < 25: result.append(lightgreen)
+            elif value > 75: result.append(lightred)
+            else: result.append('')
+        elif re.search('High', key):
+            if value < 2: result.append(lightred)
+            else: result.append('')
+        elif re.search('Low', key) and value > -2:
             result.append(lightgreen)
         elif re.search('div', key):
             if value >= 5:
@@ -111,9 +171,10 @@ def add_df_style(row: pandas.Series):
                 result.append(lightgreen)
             else: result.append('')
         else:
-            if -3 < value < 0 or value > 8:
+            # ma
+            if -2 < value < 0:
                 result.append(lightgreen)
-            elif 0 < value < 5:
+            elif 0 < value < 2:
                 result.append(lightred)
             elif value == 0:
                 result.append(lightyellow)
@@ -124,6 +185,7 @@ def add_df_style(row: pandas.Series):
     if result.count(lightgreen) >= 5: result[1] = lightgreen
     if result.count(lightred) >= 4: result[1] = lightred
 
+    # todo 更新kdj & macd
     # 上涨 或 下跌趋势
     if isinstance(row['ma5 %'], (int, float)):
         if 0 >= row['ma5 %'] >= row['ma10 %'] >= row['ma20 %']:
@@ -136,21 +198,13 @@ def add_df_style(row: pandas.Series):
     return result
 
 
-def maBoll(name, symbol, exchange):
+def maBoll(name, ts_code):
     emptyResult = pd.NaT, pd.NaT, pd.NaT, pd.NaT, pd.NaT, pd.NaT, pd.NaT
+    exchange = utils.get_exchange(ts_code)
     if exchange == None: return emptyResult
 
+    history_data = utils.get_bar_data(ts_code, 100)
     nowDate = datetime.now()
-    if nowDate.hour < 15:
-        nowDate -= timedelta(days=1)
-    start = nowDate - timedelta(100)
-    history_data: List[BarData] = load_bar_data(
-        symbol=symbol,
-        exchange=Exchange[exchange],
-        start=start,
-        end=nowDate,
-        interval=Interval.DAILY,
-    )
     df = utils.getDataFrame(history_data)
 
     lastIndex = len(history_data) - 1

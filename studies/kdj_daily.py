@@ -34,7 +34,7 @@ def kdj_daily_start():
         print(f"{index}/{len(zx_df)}")
         if pandas.isna(nowPrice) or nowPrice * row['total_share'] < 100:
             continue
-        if row['profit_yoy'] < -20: continue
+        if row['profit_yoy'] < -10: continue
 
 
         stock_row = None
@@ -59,6 +59,8 @@ def kdj_daily_start():
             row['div.dyn %'] = ''
             row['peg'] = ''
             row['profit %'] = ''
+
+        # if row['peg'] is float and (row['peg'] < -2 or row['peg'] > 1.1): continue
 
         bar_datas = utils.get_bar_data(row['ts_code'], 100)
         data_dicts = [{
@@ -172,10 +174,9 @@ def add_df_style(row: pandas.Series):
             elif value > 75: result.append(lightred)
             else: result.append('')
         elif re.search('High', key):
-            if value < 3: result.append(lightred)
-            elif value > 10: result.append(lightgreen)
+            if value < 2: result.append(lightred)
             else: result.append('')
-        elif re.search('Low', key) and value > -3:
+        elif re.search('Low', key) and value > -2:
             result.append(lightgreen)
         elif re.search('div', key):
             if value >= 5:
@@ -186,9 +187,10 @@ def add_df_style(row: pandas.Series):
                 result.append(lightgreen)
             else: result.append('')
         else:
-            if -3 < value < 0 or value > 8:
+            # ma
+            if -2 < value < 0:
                 result.append(lightgreen)
-            elif 0 < value < 5:
+            elif 0 < value < 2:
                 result.append(lightred)
             elif value == 0:
                 result.append(lightyellow)
@@ -282,4 +284,4 @@ def maBoll(name, ts_code):
     # plt.show()
 
 if __name__ == "__main__":
-    utils.calculate_function_runtime(maBollStart)
+    utils.calculate_function_runtime(kdj_daily_start)
