@@ -144,4 +144,4 @@ def calc_kdj_buying_point():
 
 
 if __name__ == "__main__":
-    kdjStart()
+    kdj_realtime_start()
