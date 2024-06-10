@@ -1,21 +1,41 @@
 from studies.wave import find_wave, plot_wave
-from studies.maBoll import maBollStart
+from studies.maBoll import zixuan_start
+from studies.kdj_realtime import kdj_realtime_start
+from studies.kdj_daily import kdj_daily_start
 from studies.dividend import dividendStart
 from utils.index import getStockDataFrame
 import utils.index as utils
 import tushare as ts
 from datetime import datetime
+import argparse
 
 
 # for index, row in getStockDataFrame().iterrows():
 #     plot_wave(row)
 #
 
-# 计算zixuan相关
-utils.calculate_function_runtime(maBollStart)
+def main():
+    parser = argparse.ArgumentParser(description="Choose which function to call.")
+    # 添加一个命令行参数
+    parser.add_argument(
+        'function',
+        choices=['zixuan_start', 'kdj_daily_start', 'kdj_realtime_start', 'dividendStart'],
+        help="Choose a function to execute"
+    )
+    args = parser.parse_args()
 
-# 计算股息率相关
-# utils.calculate_function_runtime(dividendStart)
+    if args.function == 'zixuan_start':
+        utils.calculate_function_runtime(zixuan_start)
+    elif args.function == 'kdj_daily_start':
+        utils.calculate_function_runtime(kdj_daily_start)
+    elif args.function == 'kdj_realtime_start':
+        utils.calculate_function_runtime(kdj_realtime_start)
+    elif args.function == 'dividendStart':
+        # 计算股息率相关(一般分红时才需要计算一次)
+        utils.calculate_function_runtime(dividendStart)
+    else:
+        print('函数名称输入错误')
+
 
 def test_all():
     pro = ts.pro_api()
@@ -38,3 +58,6 @@ def test_all():
             # 优先级排序
             # 调仓计算
                 # 顺便结算利润
+
+if __name__ == "__main__":
+    main()

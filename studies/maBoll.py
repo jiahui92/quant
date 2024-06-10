@@ -10,7 +10,7 @@ import utils.index as utils
 import talib
 from openpyxl import load_workbook
 
-def maBollStart():
+def zixuan_start():
     zx_df = pd.read_excel('./assets/zixuan.xlsx', dtype={'ts_code': str})
 
     df = pandas.DataFrame(columns=zx_df.columns)
@@ -269,4 +269,4 @@ def maBoll(name, ts_code):
     # plt.show()
 
 if __name__ == "__main__":
-    utils.calculate_function_runtime(maBollStart)
+    utils.calculate_function_runtime(zixuan_start)
